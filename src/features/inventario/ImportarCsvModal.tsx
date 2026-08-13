@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useProductos } from '../../application/inventario/useProductos';
+import { useCategorias } from '../../application/inventario/useCategorias';
 import { container } from '../../infrastructure/container';
 import { descargarArchivo } from '../../shared/utils/descargarArchivo';
 import { interpretarProductosCsv, plantillaProductosCsv, type FilaImportacion } from './csv';
+import type { OperacionLoteProducto } from '../../domain/repositories/ProductoRepository';
 
 interface ImportarCsvModalProps {
   onCerrar: () => void;
@@ -10,13 +13,15 @@ interface ImportarCsvModalProps {
 interface ResultadoImportacion {
   creados: number;
   actualizados: number;
+  categoriasNuevas: number;
   errores: string[];
 }
 
 export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
+  const { productos } = useProductos();
+  const { categorias, crearCategoria } = useCategorias();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [procesando, setProcesando] = useState(false);
-  const [progreso, setProgreso] = useState({ actual: 0, total: 0 });
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null);
 
   async function handleImportar() {
@@ -31,32 +36,58 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
       .map((f) => `Fila ${f.numero}: ${f.error}`);
     const validas = filas.filter((f) => f.datos);
 
-    setProgreso({ actual: 0, total: validas.length });
+    try {
+      // Crea primero las categorías que aún no existen, para no dejar productos
+      // con una categoría "huérfana" que no aparece en los selects de la app.
+      const categoriasExistentes = new Set(categorias.map((c) => c.nombre.toLowerCase()));
+      const categoriasNuevasSet = new Set<string>();
+      for (const fila of validas) {
+        const nombreCategoria = fila.datos!.categoria;
+        if (!categoriasExistentes.has(nombreCategoria.toLowerCase())) {
+          categoriasNuevasSet.add(nombreCategoria);
+        }
+      }
+      for (const nombreCategoria of categoriasNuevasSet) {
+        await crearCategoria(nombreCategoria);
+      }
 
-    let creados = 0;
-    let actualizados = 0;
+      // Empareja por código de barras contra los productos ya cargados en memoria
+      // (evita una consulta a Firestore por fila y reduce la ventana de condición
+      // de carrera si dos importaciones corrieran al mismo tiempo).
+      const productosPorCodigo = new Map(
+        productos.filter((p) => p.codigoBarras).map((p) => [p.codigoBarras as string, p]),
+      );
 
-    for (const fila of validas) {
-      if (!fila.datos) continue;
-      try {
-        const existente = fila.datos.codigoBarras
-          ? await container.productoRepository.buscarPorCodigoBarras(fila.datos.codigoBarras)
-          : null;
+      const operaciones: OperacionLoteProducto[] = [];
+      let creados = 0;
+      let actualizados = 0;
+      for (const fila of validas) {
+        const datos = fila.datos!;
+        const existente = datos.codigoBarras ? productosPorCodigo.get(datos.codigoBarras) : undefined;
         if (existente) {
-          await container.productoRepository.actualizar(existente.id, fila.datos);
+          operaciones.push({ id: existente.id, datos });
           actualizados++;
         } else {
-          await container.productoRepository.crear(fila.datos);
+          operaciones.push({ id: null, datos });
           creados++;
         }
-      } catch {
-        errores.push(`Fila ${fila.numero}: no se pudo guardar "${fila.datos.nombre}".`);
       }
-      setProgreso((p) => ({ ...p, actual: p.actual + 1 }));
-    }
 
-    setResultado({ creados, actualizados, errores });
-    setProcesando(false);
+      if (operaciones.length > 0) {
+        await container.productoRepository.guardarLote(operaciones);
+      }
+
+      setResultado({ creados, actualizados, categoriasNuevas: categoriasNuevasSet.size, errores });
+    } catch {
+      setResultado({
+        creados: 0,
+        actualizados: 0,
+        categoriasNuevas: 0,
+        errores: [...errores, 'No se pudo completar la importación. Intenta de nuevo.'],
+      });
+    } finally {
+      setProcesando(false);
+    }
   }
 
   return (
@@ -75,8 +106,8 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
 
         <p className="text-xs text-gray-500 dark:text-gray-400">
           El archivo debe tener las columnas: nombre, codigoBarras, categoria, costo, precioVenta, stock,
-          stockMinimo (el código de barras puede ir vacío). Si el código de barras ya existe, el producto se
-          actualiza; si no, se crea uno nuevo.
+          stockMinimo (el código de barras puede ir vacío, los demás campos no). Si el código de barras ya
+          existe, el producto se actualiza; si no, se crea uno nuevo. Las categorías nuevas se crean solas.
         </p>
 
         <button
@@ -101,15 +132,14 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
         </label>
 
         {procesando && (
-          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-            Procesando {progreso.actual} de {progreso.total}…
-          </p>
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Importando…</p>
         )}
 
         {resultado && (
           <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
             <p className="text-gray-700 dark:text-gray-200">
               ✅ {resultado.creados} creados · {resultado.actualizados} actualizados
+              {resultado.categoriasNuevas > 0 && ` · ${resultado.categoriasNuevas} categorías nuevas`}
             </p>
             {resultado.errores.length > 0 && (
               <div className="mt-1 max-h-32 overflow-y-auto text-xs text-red-600 dark:text-red-400">

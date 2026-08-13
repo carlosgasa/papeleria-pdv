@@ -10,14 +10,16 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
-import type { ProductoRepository } from '../../domain/repositories/ProductoRepository';
+import type { OperacionLoteProducto, ProductoRepository } from '../../domain/repositories/ProductoRepository';
 import type { ActualizacionProducto, NuevoProducto, Producto } from '../../domain/entities/Producto';
 import { db } from './firebaseApp';
 
 const COLECCION = 'productos';
+const TAMANO_LOTE = 400;
 
 function mapProducto(snapshot: QueryDocumentSnapshot<DocumentData>): Producto {
   const data = snapshot.data();
@@ -79,5 +81,29 @@ export class FirestoreProductoRepository implements ProductoRepository {
 
   async eliminar(id: string): Promise<void> {
     await deleteDoc(doc(db, COLECCION, id));
+  }
+
+  async guardarLote(operaciones: OperacionLoteProducto[]): Promise<void> {
+    for (let i = 0; i < operaciones.length; i += TAMANO_LOTE) {
+      const grupo = operaciones.slice(i, i + TAMANO_LOTE);
+      const batch = writeBatch(db);
+
+      for (const operacion of grupo) {
+        if (operacion.id) {
+          batch.update(doc(db, COLECCION, operacion.id), {
+            ...operacion.datos,
+            actualizadoEn: serverTimestamp(),
+          });
+        } else {
+          batch.set(doc(collection(db, COLECCION)), {
+            ...operacion.datos,
+            creadoEn: serverTimestamp(),
+            actualizadoEn: serverTimestamp(),
+          });
+        }
+      }
+
+      await batch.commit();
+    }
   }
 }

@@ -16,6 +16,9 @@ export function BarcodeScanner({ onDetectado, onCerrar, titulo = 'Escanear códi
   const [estado, setEstado] = useState<EstadoCamara>('iniciando');
   const [codigoManual, setCodigoManual] = useState('');
 
+  const onDetectadoRef = useRef(onDetectado);
+  onDetectadoRef.current = onDetectado;
+
   useEffect(() => {
     let cancelado = false;
     const lector = new BrowserMultiFormatReader();
@@ -45,7 +48,7 @@ export function BarcodeScanner({ onDetectado, onCerrar, titulo = 'Escanear códi
           videoRef.current,
           (resultado) => {
             if (resultado) {
-              onDetectado(resultado.getText());
+              onDetectadoRef.current(resultado.getText());
             }
           },
         );
@@ -69,7 +72,10 @@ export function BarcodeScanner({ onDetectado, onCerrar, titulo = 'Escanear códi
       controlsRef.current?.stop();
       controlsRef.current = null;
     };
-  }, [onDetectado]);
+    // El efecto solo debe (re)inicializar la cámara cuando el componente se monta,
+    // no cada vez que el padre pasa una nueva referencia de onDetectado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSubmitManual(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();

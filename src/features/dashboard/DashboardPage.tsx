@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import { tieneStockBajo } from '../../domain/entities/Producto';
 import { useProductos } from '../../application/inventario/useProductos';
@@ -13,12 +13,57 @@ import { VentasChart } from './VentasChart';
 import { InversionesPanel } from './InversionesPanel';
 import { ReportesPanel } from './ReportesPanel';
 
-function TarjetaKpi({ etiqueta, valor, submuestra }: { etiqueta: string; valor: string; submuestra?: string }) {
+type Acento = 'blue' | 'violet' | 'emerald' | 'amber' | 'rose' | 'red' | 'teal';
+
+const BORDE_ACENTO: Record<Acento, string> = {
+  blue: 'border-t-brand-500 dark:border-t-brand-500',
+  violet: 'border-t-violet-500 dark:border-t-violet-500',
+  emerald: 'border-t-emerald-500 dark:border-t-emerald-500',
+  amber: 'border-t-amber-500 dark:border-t-amber-500',
+  rose: 'border-t-rose-500 dark:border-t-rose-500',
+  red: 'border-t-red-500 dark:border-t-red-500',
+  teal: 'border-t-teal-500 dark:border-t-teal-500',
+};
+
+function TarjetaKpi({
+  etiqueta,
+  valor,
+  submuestra,
+  acento,
+}: {
+  etiqueta: string;
+  valor: string;
+  submuestra?: string;
+  acento: Acento;
+}) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    <div
+      className={`rounded-xl border border-t-4 border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 ${BORDE_ACENTO[acento]}`}
+    >
       <p className="text-xs text-gray-500 dark:text-gray-400">{etiqueta}</p>
       <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-50">{valor}</p>
       {submuestra && <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{submuestra}</p>}
+    </div>
+  );
+}
+
+function TarjetaPanel({
+  titulo,
+  acento,
+  className = '',
+  children,
+}: {
+  titulo: string;
+  acento: Acento;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`rounded-xl border border-t-4 border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 ${BORDE_ACENTO[acento]} ${className}`}
+    >
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">{titulo}</h2>
+      {children}
     </div>
   );
 }
@@ -70,29 +115,42 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <TarjetaKpi etiqueta="Ventas de hoy" valor={monto(hoy.totalVentas)} submuestra={`${hoy.cantidadVentas} ventas`} />
-            <TarjetaKpi etiqueta="Ventas de la semana" valor={monto(semana.totalVentas)} submuestra={`${semana.cantidadVentas} ventas`} />
-            <TarjetaKpi etiqueta="Ventas del mes" valor={monto(mes.totalVentas)} submuestra={`${mes.cantidadVentas} ventas`} />
-            <TarjetaKpi etiqueta="Ticket promedio (mes)" valor={monto(mes.ticketPromedio)} />
+            <TarjetaKpi
+              acento="blue"
+              etiqueta="Ventas de hoy"
+              valor={monto(hoy.totalVentas)}
+              submuestra={`${hoy.cantidadVentas} ventas`}
+            />
+            <TarjetaKpi
+              acento="blue"
+              etiqueta="Ventas de la semana"
+              valor={monto(semana.totalVentas)}
+              submuestra={`${semana.cantidadVentas} ventas`}
+            />
+            <TarjetaKpi
+              acento="blue"
+              etiqueta="Ventas del mes"
+              valor={monto(mes.totalVentas)}
+              submuestra={`${mes.cantidadVentas} ventas`}
+            />
+            <TarjetaKpi acento="violet" etiqueta="Ticket promedio (mes)" valor={monto(mes.ticketPromedio)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <TarjetaKpi etiqueta="Ganancia de hoy" valor={monto(hoy.ganancia)} />
-            <TarjetaKpi etiqueta="Ganancia del mes" valor={monto(mes.ganancia)} />
-            <TarjetaKpi etiqueta="Ganancia acumulada" valor={monto(ganancia)} />
-            <TarjetaKpi etiqueta="Por cobrar (fiado)" valor={monto(porCobrar)} />
+            <TarjetaKpi acento="emerald" etiqueta="Ganancia de hoy" valor={monto(hoy.ganancia)} />
+            <TarjetaKpi acento="emerald" etiqueta="Ganancia del mes" valor={monto(mes.ganancia)} />
+            <TarjetaKpi acento="emerald" etiqueta="Ganancia acumulada" valor={monto(ganancia)} />
+            <TarjetaKpi acento="amber" etiqueta="Por cobrar (fiado)" valor={monto(porCobrar)} />
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 lg:col-span-2">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Ventas (últimos 14 días)</h2>
+            <TarjetaPanel titulo="Ventas (últimos 14 días)" acento="blue" className="lg:col-span-2">
               <div className="mt-2">
                 <VentasChart datos={chart} ocultarSaldos={ocultarSaldos} />
               </div>
-            </div>
+            </TarjetaPanel>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Top productos</h2>
+            <TarjetaPanel titulo="Top productos" acento="violet">
               {top.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Aún no hay ventas registradas.</p>
               ) : (
@@ -109,10 +167,9 @@ export function DashboardPage() {
                   ))}
                 </ul>
               )}
-            </div>
+            </TarjetaPanel>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Top clientes</h2>
+            <TarjetaPanel titulo="Top clientes" acento="rose">
               {mejoresClientes.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Aún no hay ventas ligadas a un cliente.
@@ -131,12 +188,11 @@ export function DashboardPage() {
                   ))}
                 </ul>
               )}
-            </div>
+            </TarjetaPanel>
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Alertas de stock bajo</h2>
+            <TarjetaPanel titulo="Alertas de stock bajo" acento="red">
               {productosStockBajo.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Todos los productos tienen stock suficiente.
@@ -153,7 +209,7 @@ export function DashboardPage() {
                   ))}
                 </ul>
               )}
-            </div>
+            </TarjetaPanel>
 
             <InversionesPanel gananciaAcumulada={ganancia} ocultarSaldos={ocultarSaldos} />
 

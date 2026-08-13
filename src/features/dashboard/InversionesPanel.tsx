@@ -34,7 +34,7 @@ export function InversionesPanel({ gananciaAcumulada, ocultarSaldos = false }: I
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    <div className="rounded-xl border border-t-4 border-gray-200 border-t-amber-500 bg-white p-4 dark:border-gray-800 dark:border-t-amber-500 dark:bg-gray-900">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Inversiones y gastos</h2>
         <button

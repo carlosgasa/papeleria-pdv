@@ -114,14 +114,23 @@ export function interpretarProductosCsv(texto: string): FilaImportacion[] {
     const nombre = fila[idx.nombre]?.trim();
     const codigoBarras = fila[idx.codigoBarras]?.trim();
     const categoria = fila[idx.categoria]?.trim();
-    const costo = Number(fila[idx.costo]);
-    const precioVenta = Number(fila[idx.precioVenta]);
-    const stock = Number(fila[idx.stock]);
-    const stockMinimo = Number(fila[idx.stockMinimo]);
+    const costoTexto = fila[idx.costo]?.trim();
+    const precioVentaTexto = fila[idx.precioVenta]?.trim();
+    const stockTexto = fila[idx.stock]?.trim();
+    const stockMinimoTexto = fila[idx.stockMinimo]?.trim();
 
     if (!nombre || !categoria) {
       return { numero, error: 'Faltan nombre o categoría.' };
     }
+    if (!costoTexto || !precioVentaTexto || !stockTexto || !stockMinimoTexto) {
+      return { numero, error: 'Faltan costo, precio, stock o stock mínimo.' };
+    }
+
+    const costo = Number(costoTexto);
+    const precioVenta = Number(precioVentaTexto);
+    const stock = Number(stockTexto);
+    const stockMinimo = Number(stockMinimoTexto);
+
     if ([costo, precioVenta, stock, stockMinimo].some((v) => Number.isNaN(v) || v < 0)) {
       return { numero, error: 'Costo, precio, stock o stock mínimo no son números válidos.' };
     }
