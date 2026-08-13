@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* Modo oscuro controlado por clase (.dark en <html>) en vez de solo por el sistema operativo. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-gray-50);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Tema "pastel": reasigna los mismos tokens de color que ya usa toda la app
+ * (gray-*, white, brand-*, red-*, amber-*, emerald-*) y algunos radios, así
+ * ningún componente necesita conocer el tema — solo cambia qué significa
+ * "gray-50" o "brand-600" cuando [data-theme="pastel"] está en <html>.
+ * Al no estar dentro de una @layer, estas reglas ganan sobre las de Tailwind
+ * (@layer theme) sin necesitar mayor especificidad.
+ */
+:root[data-theme='pastel'] {
+  color-scheme: light;
+
+  --font-sans:
+    ui-rounded, 'Segoe UI Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --color-white: #fffcf3;
+  --color-black: #2e2212;
+
+  --color-gray-50: #fbf3da;
+  --color-gray-100: #f5e7c4;
+  --color-gray-200: #ecd9a8;
+  --color-gray-300: #dfc488;
+  --color-gray-400: #c2a06a;
+  --color-gray-500: #93733f;
+  --color-gray-600: #755a30;
+  --color-gray-700: #5a4526;
+  --color-gray-800: #40311b;
+  --color-gray-900: #2e2212;
+  --color-gray-950: #1d1509;
+
+  --color-brand-50: #fff1e0;
+  --color-brand-100: #ffe1be;
+  --color-brand-200: #ffc98c;
+  --color-brand-300: #ffad5c;
+  --color-brand-400: #fa9a46;
+  --color-brand-500: #f2843a;
+  --color-brand-600: #e0692c;
+  --color-brand-700: #c85f26;
+  --color-brand-800: #9c4a1e;
+  --color-brand-900: #703516;
+
+  --color-red-50: #fce8e6;
+  --color-red-100: #f8d0cc;
+  --color-red-200: #f0a9a0;
+  --color-red-400: #e37a6c;
+  --color-red-500: #d45f4e;
+  --color-red-600: #c14b3a;
+  --color-red-700: #a23a2b;
+  --color-red-900: #6b2419;
+  --color-red-950: #421810;
+
+  --color-amber-50: #fbefd1;
+  --color-amber-400: #e8b84b;
+  --color-amber-500: #d9a22e;
+  --color-amber-700: #a67818;
+  --color-amber-950: #3d2b08;
+
+  --color-emerald-400: #9dc179;
+  --color-emerald-600: #5c8a3a;
+
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.1rem;
+  --radius-2xl: 1.5rem;
+}
+
+/* Fondo tipo "hoja cuadriculada" para las pantallas raíz del tema pastel,
+   inspirado en el anuncio de la papelería. Se aplica solo a los contenedores
+   marcados con .pagina-fondo, para no ensuciar elementos pequeños (botones,
+   pastillas) que también usan bg-gray-50. */
+:root[data-theme='pastel'] .pagina-fondo {
+  background-image:
+    linear-gradient(rgba(90, 130, 180, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 130, 180, 0.16) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
