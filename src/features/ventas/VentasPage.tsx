@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { MetodoPago } from '../../domain/entities/Venta';
 import { useAuth } from '../../application/auth/useAuth';
 import { useProductos } from '../../application/inventario/useProductos';
+import { useClientes } from '../../application/clientes/useClientes';
 import { useCarrito } from '../../application/ventas/useCarrito';
 import { container } from '../../infrastructure/container';
 import { BarcodeScanner } from '../../shared/components/BarcodeScanner';
-import { ConfirmarCobroModal } from './ConfirmarCobroModal';
+import { ConfirmarCobroModal, type DatosCobro } from './ConfirmarCobroModal';
+import { TicketVentaModal } from './TicketVentaModal';
+import type { DetalleTicket } from './ticket';
 import { HistorialVentas } from './HistorialVentas';
 
 type Pestana = 'vender' | 'historial';
@@ -13,6 +15,7 @@ type Pestana = 'vender' | 'historial';
 export function VentasPage() {
   const { usuario } = useAuth();
   const { productos } = useProductos();
+  const { clientes } = useClientes();
   const carrito = useCarrito();
   const [pestana, setPestana] = useState<Pestana>('vender');
   const [busqueda, setBusqueda] = useState('');
@@ -21,6 +24,7 @@ export function VentasPage() {
   const [procesando, setProcesando] = useState(false);
   const [errorCobro, setErrorCobro] = useState<string | null>(null);
   const [avisoScanner, setAvisoScanner] = useState<string | null>(null);
+  const [ventaCompletada, setVentaCompletada] = useState<DetalleTicket | null>(null);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
 
   const productosPorId = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
@@ -90,19 +94,43 @@ export function VentasPage() {
     }
   }, [pestana, mostrarCobro, mostrarScanner]);
 
-  async function handleConfirmarCobro(metodoPago: MetodoPago, clienteId: string | null) {
+  async function handleConfirmarCobro(datos: DatosCobro) {
     if (!usuario || carrito.items.length === 0) return;
     setProcesando(true);
     setErrorCobro(null);
     try {
-      await container.ventaRepository.registrarVenta({
-        items: carrito.items,
-        total: carrito.total,
-        metodoPago,
-        clienteId,
+      const subtotal = carrito.total;
+      const total = subtotal - datos.descuento;
+      const items = carrito.items;
+
+      const ventaId = await container.ventaRepository.registrarVenta({
+        items,
+        total,
+        descuento: datos.descuento,
+        metodoPago: datos.metodoPago,
+        clienteId: datos.clienteId,
         usuarioId: usuario.id,
         fecha: Date.now(),
       });
+
+      const clienteNombre = datos.clienteId
+        ? (clientes.find((c) => c.id === datos.clienteId)?.nombre ?? null)
+        : null;
+      const cambio = datos.montoRecibido !== null ? datos.montoRecibido - total : null;
+
+      setVentaCompletada({
+        ventaId,
+        fecha: Date.now(),
+        items,
+        subtotal,
+        descuento: datos.descuento,
+        total,
+        metodoPago: datos.metodoPago,
+        montoRecibido: datos.montoRecibido,
+        cambio,
+        clienteNombre,
+      });
+
       carrito.limpiar();
       setMostrarCobro(false);
     } catch (err) {
@@ -294,12 +322,16 @@ export function VentasPage() {
 
       {mostrarCobro && (
         <ConfirmarCobroModal
-          total={carrito.total}
+          subtotal={carrito.total}
           procesando={procesando}
           error={errorCobro}
-          onConfirmar={(metodoPago, clienteId) => void handleConfirmarCobro(metodoPago, clienteId)}
+          onConfirmar={(datos) => void handleConfirmarCobro(datos)}
           onCerrar={() => setMostrarCobro(false)}
         />
+      )}
+
+      {ventaCompletada && (
+        <TicketVentaModal detalle={ventaCompletada} onCerrar={() => setVentaCompletada(null)} />
       )}
     </div>
   );

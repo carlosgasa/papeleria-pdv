@@ -58,6 +58,7 @@ export function HistorialVentas() {
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {format(venta.fecha, "d 'de' MMM, HH:mm", { locale: es })} · {ETIQUETA_METODO[venta.metodoPago]}
+                {venta.descuento > 0 && ` · descuento $${venta.descuento.toFixed(2)}`}
               </p>
             </div>
             {!venta.anulada && (

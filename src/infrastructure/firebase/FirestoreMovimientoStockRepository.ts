@@ -1,11 +1,12 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
-  runTransaction,
   serverTimestamp,
+  writeBatch,
   type DocumentData,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
@@ -43,34 +44,37 @@ export class FirestoreMovimientoStockRepository implements MovimientoStockReposi
     const productoRef = doc(db, COLECCION_PRODUCTOS, productoId);
     const movimientoRef = doc(collection(db, COLECCION_MOVIMIENTOS));
 
-    await runTransaction(db, async (transaction) => {
-      const snap = await transaction.get(productoRef);
-      if (!snap.exists()) {
-        throw new Error('El producto ya no existe.');
-      }
-      const data = snap.data();
-      const stockActual = data.stock as number;
-      const stockResultante = tipo === 'entrada' ? stockActual + cantidad : stockActual - cantidad;
+    // Lectura simple + lote (no transacción) para que también funcione sin conexión.
+    const snap = await getDoc(productoRef);
+    if (!snap.exists()) {
+      throw new Error('El producto ya no existe.');
+    }
+    const data = snap.data();
+    const stockActual = data.stock as number;
+    const stockResultante = tipo === 'entrada' ? stockActual + cantidad : stockActual - cantidad;
 
-      if (stockResultante < 0) {
-        throw new Error(`No hay suficiente stock. Disponible: ${stockActual}.`);
-      }
+    if (stockResultante < 0) {
+      throw new Error(`No hay suficiente stock. Disponible: ${stockActual}.`);
+    }
 
-      transaction.update(productoRef, {
-        stock: stockResultante,
-        actualizadoEn: serverTimestamp(),
-      });
+    const batch = writeBatch(db);
 
-      transaction.set(movimientoRef, {
-        productoId,
-        productoNombre: data.nombre,
-        tipo,
-        cantidad,
-        stockResultante,
-        motivo: motivo?.trim() || null,
-        usuarioId,
-        fecha: serverTimestamp(),
-      });
+    batch.update(productoRef, {
+      stock: stockResultante,
+      actualizadoEn: serverTimestamp(),
     });
+
+    batch.set(movimientoRef, {
+      productoId,
+      productoNombre: data.nombre,
+      tipo,
+      cantidad,
+      stockResultante,
+      motivo: motivo?.trim() || null,
+      usuarioId,
+      fecha: serverTimestamp(),
+    });
+
+    await batch.commit();
   }
 }

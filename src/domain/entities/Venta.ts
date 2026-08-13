@@ -12,7 +12,10 @@ export interface ItemVenta {
 export interface Venta {
   id: string;
   items: ItemVenta[];
+  /** Subtotal de los items menos el descuento; es lo que realmente pagó el cliente. */
   total: number;
+  /** Monto en pesos descontado del subtotal (0 si no hubo descuento). */
+  descuento: number;
   metodoPago: MetodoPago;
   clienteId: string | null;
   usuarioId: string;
@@ -23,13 +26,14 @@ export interface Venta {
 
 export type NuevaVenta = Omit<Venta, 'id' | 'anulada' | 'anuladaEn'>;
 
-export function calcularTotal(items: ItemVenta[]): number {
+export function calcularSubtotal(items: ItemVenta[]): number {
   return items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0);
 }
 
 export function calcularGanancia(venta: Venta): number {
-  return venta.items.reduce(
+  const gananciaBruta = venta.items.reduce(
     (acc, item) => acc + item.cantidad * (item.precioUnitario - item.costoUnitario),
     0,
   );
+  return gananciaBruta - venta.descuento;
 }

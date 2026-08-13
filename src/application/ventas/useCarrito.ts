@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ItemVenta } from '../../domain/entities/Venta';
-import { calcularTotal } from '../../domain/entities/Venta';
+import { calcularSubtotal } from '../../domain/entities/Venta';
 import type { Producto } from '../../domain/entities/Producto';
 
 export function useCarrito() {
@@ -63,7 +63,7 @@ export function useCarrito() {
     setError(null);
   }
 
-  const total = useMemo(() => calcularTotal(items), [items]);
+  const total = useMemo(() => calcularSubtotal(items), [items]);
 
   return { items, total, error, agregarProducto, cambiarCantidad, quitar, limpiar };
 }

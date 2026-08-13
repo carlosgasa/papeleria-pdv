@@ -17,11 +17,12 @@ function csvEscape(valor: string): string {
 }
 
 export function generarCsvCorte(ventas: Venta[]): string {
-  const encabezado = ['fecha', 'hora', 'total', 'ganancia', 'metodoPago', 'anulada', 'items'];
+  const encabezado = ['fecha', 'hora', 'total', 'descuento', 'ganancia', 'metodoPago', 'anulada', 'items'];
   const filas = ventas.map((venta) => [
     format(venta.fecha, 'yyyy-MM-dd'),
     format(venta.fecha, 'HH:mm'),
     venta.total.toFixed(2),
+    venta.descuento.toFixed(2),
     calcularGanancia(venta).toFixed(2),
     ETIQUETA_METODO[venta.metodoPago] ?? venta.metodoPago,
     venta.anulada ? 'sí' : 'no',
@@ -34,6 +35,7 @@ export function generarPdfCorte(ventas: Venta[], desde: Date, hasta: Date): jsPD
   const vigentes = ventas.filter((v) => !v.anulada);
   const totalVentas = vigentes.reduce((acc, v) => acc + v.total, 0);
   const totalGanancia = vigentes.reduce((acc, v) => acc + calcularGanancia(v), 0);
+  const totalDescuentos = vigentes.reduce((acc, v) => acc + v.descuento, 0);
   const porMetodo = new Map<string, number>();
   for (const venta of vigentes) {
     porMetodo.set(venta.metodoPago, (porMetodo.get(venta.metodoPago) ?? 0) + venta.total);
@@ -66,6 +68,9 @@ export function generarPdfCorte(ventas: Venta[], desde: Date, hasta: Date): jsPD
   linea('Resumen', 12, true);
   linea(`Ventas (no anuladas): ${vigentes.length} de ${ventas.length} registradas`);
   linea(`Total vendido: $${totalVentas.toFixed(2)}`);
+  if (totalDescuentos > 0) {
+    linea(`Descuentos otorgados: $${totalDescuentos.toFixed(2)}`);
+  }
   linea(`Ganancia: $${totalGanancia.toFixed(2)}`);
   for (const [metodo, monto] of porMetodo) {
     linea(`  ${ETIQUETA_METODO[metodo] ?? metodo}: $${monto.toFixed(2)}`);

@@ -3,11 +3,18 @@ import type { MetodoPago } from '../../domain/entities/Venta';
 import { useClientes } from '../../application/clientes/useClientes';
 import { container } from '../../infrastructure/container';
 
+export interface DatosCobro {
+  metodoPago: MetodoPago;
+  clienteId: string | null;
+  descuento: number;
+  montoRecibido: number | null;
+}
+
 interface ConfirmarCobroModalProps {
-  total: number;
+  subtotal: number;
   procesando: boolean;
   error: string | null;
-  onConfirmar: (metodoPago: MetodoPago, clienteId: string | null) => void;
+  onConfirmar: (datos: DatosCobro) => void;
   onCerrar: () => void;
 }
 
@@ -22,7 +29,7 @@ const BILLETES_RAPIDOS = [50, 100, 200, 500, 1000];
 const CLIENTE_NUEVO = '__nuevo__';
 
 export function ConfirmarCobroModal({
-  total,
+  subtotal,
   procesando,
   error,
   onConfirmar,
@@ -35,12 +42,23 @@ export function ConfirmarCobroModal({
   const [nombreClienteNuevo, setNombreClienteNuevo] = useState('');
   const [creandoCliente, setCreandoCliente] = useState(false);
   const [errorCliente, setErrorCliente] = useState<string | null>(null);
+  const [unidadDescuento, setUnidadDescuento] = useState<'$' | '%'>('$');
+  const [valorDescuento, setValorDescuento] = useState('');
+
+  const descuento = useMemo(() => {
+    const valor = Number(valorDescuento);
+    if (!valorDescuento.trim() || Number.isNaN(valor) || valor <= 0) return 0;
+    const monto = unidadDescuento === '%' ? subtotal * (valor / 100) : valor;
+    return Math.min(monto, subtotal);
+  }, [valorDescuento, unidadDescuento, subtotal]);
+
+  const totalFinal = subtotal - descuento;
 
   const cambio = useMemo(() => {
     const recibido = Number(montoRecibido);
     if (!montoRecibido.trim() || Number.isNaN(recibido) || recibido < 0) return null;
-    return recibido - total;
-  }, [montoRecibido, total]);
+    return recibido - totalFinal;
+  }, [montoRecibido, totalFinal]);
 
   async function handleConfirmar() {
     let clienteIdFinal: string | null = null;
@@ -73,14 +91,27 @@ export function ConfirmarCobroModal({
       return;
     }
 
-    onConfirmar(metodoPago, clienteIdFinal);
+    const recibido = Number(montoRecibido);
+    onConfirmar({
+      metodoPago,
+      clienteId: clienteIdFinal,
+      descuento,
+      montoRecibido: montoRecibido.trim() && !Number.isNaN(recibido) ? recibido : null,
+    });
   }
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
       <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-xl dark:bg-gray-900 sm:rounded-2xl">
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-50">Confirmar cobro</h2>
-        <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-50">${total.toFixed(2)}</p>
+        {descuento > 0 ? (
+          <div className="mt-1">
+            <p className="text-sm text-gray-400 line-through dark:text-gray-500">${subtotal.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">${totalFinal.toFixed(2)}</p>
+          </div>
+        ) : (
+          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-50">${totalFinal.toFixed(2)}</p>
+        )}
 
         <div className="mt-4 grid grid-cols-4 gap-2">
           {METODOS.map((metodo) => (
@@ -98,6 +129,45 @@ export function ConfirmarCobroModal({
               {metodo.etiqueta}
             </button>
           ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+          <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+            Descuento (opcional)
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={valorDescuento}
+              onChange={(e) => setValorDescuento(e.target.value)}
+              placeholder="0"
+              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"
+            />
+            <div className="flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700">
+              {(['$', '%'] as const).map((unidad) => (
+                <button
+                  key={unidad}
+                  type="button"
+                  onClick={() => setUnidadDescuento(unidad)}
+                  className={`w-10 text-sm font-medium transition ${
+                    unidadDescuento === unidad
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                  }`}
+                >
+                  {unidad}
+                </button>
+              ))}
+            </div>
+          </div>
+          {descuento > 0 && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Descuento aplicado: ${descuento.toFixed(2)}
+            </p>
+          )}
         </div>
 
         {metodoPago === 'efectivo' && (
@@ -129,7 +199,7 @@ export function ConfirmarCobroModal({
               ))}
               <button
                 type="button"
-                onClick={() => setMontoRecibido(String(total))}
+                onClick={() => setMontoRecibido(String(totalFinal))}
                 className="rounded-full border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 Exacto

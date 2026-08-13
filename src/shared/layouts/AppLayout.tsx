@@ -4,6 +4,7 @@ import { useAuth } from '../../application/auth/useAuth';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { PastelBunting } from '../components/PastelBunting';
 import { AlertasStockToggle } from '../components/AlertasStockToggle';
+import { EstadoConexionBanner } from '../components/EstadoConexionBanner';
 
 const ENLACES = [
   { to: '/', label: 'Inicio', icon: '📊', fin: true },
@@ -33,6 +34,7 @@ export function AppLayout() {
 
   return (
     <div className="pagina-fondo flex min-h-svh flex-col bg-gray-50 dark:bg-gray-950">
+      <EstadoConexionBanner />
       <PastelBunting />
 
       <div className="flex flex-1 flex-col md:flex-row">
