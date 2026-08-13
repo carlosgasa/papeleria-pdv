@@ -1,7 +1,7 @@
 export interface Producto {
   id: string;
   nombre: string;
-  codigoBarras: string;
+  codigoBarras: string | null;
   categoria: string;
   costo: number;
   precioVenta: number;

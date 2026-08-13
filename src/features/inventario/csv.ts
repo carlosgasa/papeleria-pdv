@@ -9,10 +9,20 @@ function csvEscape(valor: string): string {
   return valor;
 }
 
+export function plantillaProductosCsv(): string {
+  const ejemplos = [
+    ['Bolígrafo azul', '', 'Escritura', '3.5', '6', '12', '3'],
+    ['Cuaderno profesional 100h', '7501234567890', 'Papel', '15', '25', '20', '5'],
+  ];
+  return [COLUMNAS as unknown as string[], ...ejemplos]
+    .map((fila) => fila.map(csvEscape).join(','))
+    .join('\n');
+}
+
 export function productosACsv(productos: Producto[]): string {
   const filas = productos.map((p) => [
     p.nombre,
-    p.codigoBarras,
+    p.codigoBarras ?? '',
     p.categoria,
     String(p.costo),
     String(p.precioVenta),
@@ -109,8 +119,8 @@ export function interpretarProductosCsv(texto: string): FilaImportacion[] {
     const stock = Number(fila[idx.stock]);
     const stockMinimo = Number(fila[idx.stockMinimo]);
 
-    if (!nombre || !codigoBarras || !categoria) {
-      return { numero, error: 'Faltan nombre, código de barras o categoría.' };
+    if (!nombre || !categoria) {
+      return { numero, error: 'Faltan nombre o categoría.' };
     }
     if ([costo, precioVenta, stock, stockMinimo].some((v) => Number.isNaN(v) || v < 0)) {
       return { numero, error: 'Costo, precio, stock o stock mínimo no son números válidos.' };
@@ -118,7 +128,16 @@ export function interpretarProductosCsv(texto: string): FilaImportacion[] {
 
     return {
       numero,
-      datos: { nombre, codigoBarras, categoria, costo, precioVenta, stock, stockMinimo, imagenUrl: null },
+      datos: {
+        nombre,
+        codigoBarras: codigoBarras || null,
+        categoria,
+        costo,
+        precioVenta,
+        stock,
+        stockMinimo,
+        imagenUrl: null,
+      },
     };
   });
 }

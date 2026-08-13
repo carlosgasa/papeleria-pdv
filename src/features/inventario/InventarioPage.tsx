@@ -9,7 +9,7 @@ import { ProductoFormModal } from './ProductoFormModal';
 import { ImportarCsvModal } from './ImportarCsvModal';
 import { AjusteStockModal } from './AjusteStockModal';
 import { MovimientosStockTab } from './MovimientosStockTab';
-import { productosACsv } from './csv';
+import { plantillaProductosCsv, productosACsv } from './csv';
 import { descargarArchivo } from '../../shared/utils/descargarArchivo';
 
 type Pestana = 'productos' | 'movimientos';
@@ -31,13 +31,17 @@ export function InventarioPage() {
     descargarArchivo(`productos-${fecha}.csv`, productosACsv(productos), 'text/csv;charset=utf-8');
   }
 
+  function handleDescargarPlantilla() {
+    descargarArchivo('plantilla-productos.csv', plantillaProductosCsv(), 'text/csv;charset=utf-8');
+  }
+
   const productosFiltrados = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
     if (!termino) return productos;
     return productos.filter(
       (producto) =>
         producto.nombre.toLowerCase().includes(termino) ||
-        producto.codigoBarras.includes(termino) ||
+        producto.codigoBarras?.includes(termino) ||
         producto.categoria.toLowerCase().includes(termino),
     );
   }, [productos, busqueda]);
@@ -78,6 +82,13 @@ export function InventarioPage() {
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Inventario</h1>
           <div className="flex flex-wrap justify-end gap-2">
+            <button
+              onClick={handleDescargarPlantilla}
+              title="Descargar plantilla CSV"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              📋 Plantilla
+            </button>
             <button
               onClick={() => setMostrarImportar(true)}
               title="Importar CSV"
@@ -182,7 +193,8 @@ export function InventarioPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-50">{producto.nombre}</p>
                   <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-                    {producto.categoria} · {producto.codigoBarras}
+                    {producto.categoria}
+                    {producto.codigoBarras ? ` · ${producto.codigoBarras}` : ''}
                   </p>
                 </div>
 

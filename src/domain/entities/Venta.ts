@@ -3,7 +3,7 @@ export type MetodoPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'fiado';
 export interface ItemVenta {
   productoId: string;
   nombre: string;
-  codigoBarras: string;
+  codigoBarras: string | null;
   cantidad: number;
   precioUnitario: number;
   costoUnitario: number;

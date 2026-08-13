@@ -31,7 +31,7 @@ export function VentasPage() {
     return productos
       .filter(
         (producto) =>
-          producto.nombre.toLowerCase().includes(termino) || producto.codigoBarras.includes(termino),
+          producto.nombre.toLowerCase().includes(termino) || producto.codigoBarras?.includes(termino),
       )
       .slice(0, 8);
   }, [productos, busqueda]);

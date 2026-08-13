@@ -25,6 +25,9 @@ dev-dist
 
 # Claude Code local settings (machine/session-specific)
 .claude/
+
+# Firebase CLI local cache
+.firebase/
 .DS_Store
 *.suo
 *.ntvs*

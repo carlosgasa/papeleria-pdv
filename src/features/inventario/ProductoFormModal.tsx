@@ -62,8 +62,8 @@ export function ProductoFormModal({
     const stockNum = Number(stock);
     const stockMinimoNum = Number(stockMinimo);
 
-    if (!nombre.trim() || !codigoBarras.trim()) {
-      setError('Nombre y código de barras son obligatorios.');
+    if (!nombre.trim()) {
+      setError('El nombre es obligatorio.');
       return;
     }
     if ([costoNum, precioVentaNum, stockNum, stockMinimoNum].some((valor) => Number.isNaN(valor) || valor < 0)) {
@@ -81,7 +81,7 @@ export function ProductoFormModal({
 
       const datosBase = {
         nombre: nombre.trim(),
-        codigoBarras: codigoBarras.trim(),
+        codigoBarras: codigoBarras.trim() || null,
         categoria: categoriaAGuardar,
         costo: costoNum,
         precioVenta: precioVentaNum,
@@ -176,11 +176,12 @@ export function ProductoFormModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Código de barras</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Código de barras (opcional)
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
-                required
                 value={codigoBarras}
                 onChange={(e) => setCodigoBarras(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"

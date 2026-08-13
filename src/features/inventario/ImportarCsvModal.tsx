@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { container } from '../../infrastructure/container';
-import { interpretarProductosCsv, type FilaImportacion } from './csv';
+import { descargarArchivo } from '../../shared/utils/descargarArchivo';
+import { interpretarProductosCsv, plantillaProductosCsv, type FilaImportacion } from './csv';
 
 interface ImportarCsvModalProps {
   onCerrar: () => void;
@@ -38,7 +39,9 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
     for (const fila of validas) {
       if (!fila.datos) continue;
       try {
-        const existente = await container.productoRepository.buscarPorCodigoBarras(fila.datos.codigoBarras);
+        const existente = fila.datos.codigoBarras
+          ? await container.productoRepository.buscarPorCodigoBarras(fila.datos.codigoBarras)
+          : null;
         if (existente) {
           await container.productoRepository.actualizar(existente.id, fila.datos);
           actualizados++;
@@ -72,8 +75,17 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
 
         <p className="text-xs text-gray-500 dark:text-gray-400">
           El archivo debe tener las columnas: nombre, codigoBarras, categoria, costo, precioVenta, stock,
-          stockMinimo. Si el código de barras ya existe, el producto se actualiza; si no, se crea uno nuevo.
+          stockMinimo (el código de barras puede ir vacío). Si el código de barras ya existe, el producto se
+          actualiza; si no, se crea uno nuevo.
         </p>
+
+        <button
+          type="button"
+          onClick={() => descargarArchivo('plantilla-productos.csv', plantillaProductosCsv(), 'text/csv;charset=utf-8')}
+          className="mt-2 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+        >
+          📋 Descargar plantilla vacía
+        </button>
 
         <label className="mt-3 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center text-sm text-gray-500 hover:border-brand-400 dark:border-gray-700 dark:text-gray-400">
           {archivo ? archivo.name : 'Selecciona un archivo .csv'}
