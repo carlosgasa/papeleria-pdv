@@ -2,14 +2,23 @@ import { useMemo, useRef, useState, type DragEvent } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { TAMANOS_HOJA } from './plantillas';
-import { ajustarSinRecortar, cargarImagen, recortarParaLlenar } from './imageUtils';
+import {
+  AJUSTE_RECORTE_DEFECTO,
+  ajustarSinRecortar,
+  cargarImagen,
+  estiloRecorte,
+  recortarConAjuste,
+  type AjusteRecorte,
+} from './imageUtils';
 import { imprimirPaginas } from './imprimir';
+import { AjustarRecorteModal } from './AjustarRecorteModal';
 
 interface EntradaImagen {
   id: string;
   archivo: File;
   img: HTMLImageElement;
   previewUrl: string;
+  ajuste: AjusteRecorte;
 }
 
 const DPI_EXPORTACION = 300;
@@ -34,10 +43,17 @@ export function CuadriculaImagenesTab() {
   const [recortar, setRecortar] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [entradaEditandoId, setEntradaEditandoId] = useState<string | null>(null);
   const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const hoja = useMemo(() => TAMANOS_HOJA.find((h) => h.id === hojaId) ?? TAMANOS_HOJA[0], [hojaId]);
   const slotsPorHoja = Math.max(1, columnas) * Math.max(1, filas);
+  const celdaAspecto = useMemo(() => {
+    const areaAncho = hoja.anchoCm - 2 * margenCm - (columnas - 1) * espacioCm;
+    const alturaTitulo = titulo.trim() ? ALTO_TITULO_CM : 0;
+    const areaAlto = hoja.altoCm - 2 * margenCm - alturaTitulo - (filas - 1) * espacioCm;
+    return (areaAncho / columnas) / (areaAlto / filas);
+  }, [hoja, columnas, filas, espacioCm, titulo]);
 
   const paginas = useMemo(() => {
     if (entradas.length === 0) return [];
@@ -60,6 +76,7 @@ export function CuadriculaImagenesTab() {
             archivo,
             img,
             previewUrl: img.src,
+            ajuste: AJUSTE_RECORTE_DEFECTO,
           } satisfies EntradaImagen;
         }),
       );
@@ -85,6 +102,11 @@ export function CuadriculaImagenesTab() {
   function limpiarTodo() {
     entradas.forEach((e) => URL.revokeObjectURL(e.previewUrl));
     setEntradas([]);
+  }
+
+  function actualizarAjuste(id: string, ajuste: AjusteRecorte) {
+    setEntradas((actuales) => actuales.map((e) => (e.id === id ? { ...e, ajuste } : e)));
+    setEntradaEditandoId(null);
   }
 
   function calcularCeldas() {
@@ -122,7 +144,7 @@ export function CuadriculaImagenesTab() {
           const y = margenCm + alturaTitulo + fila * (celdaAlto + espacioCm);
 
           if (recortar) {
-            const dataUrl = recortarParaLlenar(entrada.img, anchoPx, altoPx);
+            const dataUrl = recortarConAjuste(entrada.img, anchoPx, altoPx, entrada.ajuste);
             pdf.addImage(dataUrl, 'JPEG', x, y, celdaAncho, celdaAlto);
           } else {
             const ajustada = ajustarSinRecortar(entrada.img, anchoPx, altoPx);
@@ -380,19 +402,61 @@ export function CuadriculaImagenesTab() {
                   gap: `${(espacioCm / hoja.altoCm) * 100}% ${(espacioCm / hoja.anchoCm) * 100}%`,
                 }}
               >
-                {pagina.map((entrada, indiceSlot) => (
-                  <img
-                    key={`${entrada.id}-${indiceSlot}`}
-                    src={entrada.previewUrl}
-                    alt=""
-                    className={`h-full w-full bg-white ${recortar ? 'object-cover' : 'object-contain'}`}
-                  />
-                ))}
+                {pagina.map((entrada, indiceSlot) =>
+                  recortar ? (
+                    <div
+                      key={`${entrada.id}-${indiceSlot}`}
+                      className="group relative h-full w-full overflow-hidden bg-white"
+                    >
+                      <img
+                        src={entrada.previewUrl}
+                        alt=""
+                        className="absolute"
+                        style={{
+                          ...estiloRecorte(entrada.img, celdaAspecto, entrada.ajuste),
+                          maxWidth: 'none',
+                          maxHeight: 'none',
+                        }}
+                      />
+                      <button
+                        onClick={() => setEntradaEditandoId(entrada.id)}
+                        className="absolute bottom-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
+                        aria-label="Ajustar recorte"
+                        title="Ajustar recorte"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  ) : (
+                    <img
+                      key={`${entrada.id}-${indiceSlot}`}
+                      src={entrada.previewUrl}
+                      alt=""
+                      className="h-full w-full bg-white object-contain"
+                    />
+                  ),
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {entradaEditandoId &&
+        (() => {
+          const entrada = entradas.find((e) => e.id === entradaEditandoId);
+          if (!entrada) return null;
+          return (
+            <AjustarRecorteModal
+              previewUrl={entrada.previewUrl}
+              img={entrada.img}
+              celdaAspecto={celdaAspecto}
+              ajusteInicial={entrada.ajuste}
+              onGuardar={(ajuste) => actualizarAjuste(entrada.id, ajuste)}
+              onCerrar={() => setEntradaEditandoId(null)}
+            />
+          );
+        })()}
     </div>
   );
 }
