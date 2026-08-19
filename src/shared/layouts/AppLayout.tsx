@@ -11,7 +11,7 @@ const ENLACES = [
   { to: '/ventas', label: 'Ventas', icon: '🛒' },
   { to: '/inventario', label: 'Inventario', icon: '📦' },
   { to: '/clientes', label: 'Clientes', icon: '👥' },
-  { to: '/experimental', label: 'Fotos', icon: '🖼️' },
+  { to: '/experimental', label: 'Herramientas', icon: '🖼️' },
 ];
 
 function claseEnlace(activo: boolean, variante: 'sidebar' | 'bottom') {

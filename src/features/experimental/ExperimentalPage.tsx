@@ -19,7 +19,7 @@ export function ExperimentalPage() {
   return (
     <div>
       <div className="border-b border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:p-6">
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Herramientas de fotos</h1>
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Herramientas</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Herramientas independientes del punto de venta. No se guarda nada en la nube.
         </p>
