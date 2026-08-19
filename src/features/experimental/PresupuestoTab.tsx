@@ -4,6 +4,7 @@ import { compartirImagenDeElemento, compartirTexto } from '../../shared/utils/co
 
 interface ItemPresupuesto {
   id: string;
+  productoId: string;
   nombre: string;
   cantidad: number;
   precioUnitario: number;
@@ -47,18 +48,20 @@ export function PresupuestoTab() {
     [items],
   );
 
-  function agregarDesdeProducto(nombre: string, precioUnitario: number) {
-    setItems((actuales) => [...actuales, { id: nuevoId(), nombre, cantidad: 1, precioUnitario }]);
+  function agregarDesdeProducto(productoId: string, nombre: string, precioUnitario: number) {
+    setItems((actuales) => {
+      const existente = actuales.find((item) => item.productoId === productoId);
+      if (existente) {
+        return actuales.map((item) =>
+          item.productoId === productoId ? { ...item, cantidad: item.cantidad + 1 } : item,
+        );
+      }
+      return [...actuales, { id: nuevoId(), productoId, nombre, cantidad: 1, precioUnitario }];
+    });
     setBusqueda('');
   }
 
-  function agregarPersonalizado() {
-    if (!busqueda.trim()) return;
-    setItems((actuales) => [...actuales, { id: nuevoId(), nombre: busqueda.trim(), cantidad: 1, precioUnitario: 0 }]);
-    setBusqueda('');
-  }
-
-  function actualizarItem(id: string, cambios: Partial<ItemPresupuesto>) {
+  function actualizarItem(id: string, cambios: Partial<Pick<ItemPresupuesto, 'cantidad' | 'precioUnitario'>>) {
     setItems((actuales) => actuales.map((item) => (item.id === id ? { ...item, ...cambios } : item)));
   }
 
@@ -103,8 +106,8 @@ export function PresupuestoTab() {
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Arma una cotización rápida para un cliente (ej. lista de útiles). No descuenta stock ni se guarda —
-          solo es para calcular y compartir un estimado.
+          Arma una cotización rápida para un cliente (ej. lista de útiles) usando solo productos de tu
+          inventario. No descuenta stock ni se guarda — es solo para calcular y compartir un estimado.
         </p>
 
         <div className="mt-3">
@@ -122,39 +125,36 @@ export function PresupuestoTab() {
 
         <div className="relative mt-3">
           <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
-            Buscar producto o escribe uno nuevo
+            Buscar producto en tu inventario
           </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Ej. Cuaderno profesional"
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"
-            />
-            <button
-              onClick={agregarPersonalizado}
-              disabled={!busqueda.trim()}
-              className="shrink-0 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              + Agregar
-            </button>
-          </div>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Ej. Cuaderno profesional"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"
+          />
 
-          {resultados.length > 0 && (
+          {busqueda.trim() && (
             <div className="mt-1 space-y-1 rounded-lg border border-gray-200 bg-white p-1.5 dark:border-gray-800 dark:bg-gray-900">
-              {resultados.map((producto) => (
-                <button
-                  key={producto.id}
-                  onClick={() => agregarDesdeProducto(producto.nombre, producto.precioVenta)}
-                  className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <span className="truncate text-gray-700 dark:text-gray-300">{producto.nombre}</span>
-                  <span className="shrink-0 font-medium text-gray-900 dark:text-gray-50">
-                    ${producto.precioVenta.toFixed(2)}
-                  </span>
-                </button>
-              ))}
+              {resultados.length === 0 ? (
+                <p className="px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  No se encontraron productos con ese nombre en tu inventario.
+                </p>
+              ) : (
+                resultados.map((producto) => (
+                  <button
+                    key={producto.id}
+                    onClick={() => agregarDesdeProducto(producto.id, producto.nombre, producto.precioVenta)}
+                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <span className="truncate text-gray-700 dark:text-gray-300">{producto.nombre}</span>
+                    <span className="shrink-0 font-medium text-gray-900 dark:text-gray-50">
+                      ${producto.precioVenta.toFixed(2)}
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -172,12 +172,9 @@ export function PresupuestoTab() {
           <ul className="mt-3 space-y-2">
             {items.map((item) => (
               <li key={item.id} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={item.nombre}
-                  onChange={(e) => actualizarItem(item.id, { nombre: e.target.value })}
-                  className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                />
+                <span className="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-300">
+                  {item.nombre}
+                </span>
                 <input
                   type="number"
                   min="1"
