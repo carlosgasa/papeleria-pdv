@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type DragEvent } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { TAMANOS_HOJA } from './plantillas';
-import { cargarImagen, recortarParaLlenar } from './imageUtils';
+import { ajustarSinRecortar, cargarImagen, recortarParaLlenar } from './imageUtils';
 import { imprimirPaginas } from './imprimir';
 
 interface EntradaImagen {
@@ -31,6 +31,7 @@ export function CuadriculaImagenesTab() {
   const [titulo, setTitulo] = useState('');
   const margenCm = 0.5;
   const [espacioCm, setEspacioCm] = useState(0.2);
+  const [recortar, setRecortar] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -119,8 +120,18 @@ export function CuadriculaImagenesTab() {
           const fila = Math.floor(indiceSlot / columnas);
           const x = margenCm + col * (celdaAncho + espacioCm);
           const y = margenCm + alturaTitulo + fila * (celdaAlto + espacioCm);
-          const dataUrl = recortarParaLlenar(entrada.img, anchoPx, altoPx);
-          pdf.addImage(dataUrl, 'JPEG', x, y, celdaAncho, celdaAlto);
+
+          if (recortar) {
+            const dataUrl = recortarParaLlenar(entrada.img, anchoPx, altoPx);
+            pdf.addImage(dataUrl, 'JPEG', x, y, celdaAncho, celdaAlto);
+          } else {
+            const ajustada = ajustarSinRecortar(entrada.img, anchoPx, altoPx);
+            const anchoImgCm = (ajustada.anchoPx / DPI_EXPORTACION) * CM_A_PULGADA;
+            const altoImgCm = (ajustada.altoPx / DPI_EXPORTACION) * CM_A_PULGADA;
+            const offsetX = (celdaAncho - anchoImgCm) / 2;
+            const offsetY = (celdaAlto - altoImgCm) / 2;
+            pdf.addImage(ajustada.dataUrl, 'JPEG', x + offsetX, y + offsetY, anchoImgCm, altoImgCm);
+          }
         });
       });
 
@@ -282,6 +293,32 @@ export function CuadriculaImagenesTab() {
             />
           </div>
         </div>
+
+        <div className="mt-3 flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+          <div>
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Recortar para llenar la celda</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {recortar
+                ? 'La foto llena la celda completa; se recorta lo que sobre.'
+                : 'Se ve la foto completa, sin recortar; puede dejar espacio en blanco.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={recortar}
+            onClick={() => setRecortar((actual) => !actual)}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+              recortar ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                recortar ? 'left-5' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -348,7 +385,7 @@ export function CuadriculaImagenesTab() {
                     key={`${entrada.id}-${indiceSlot}`}
                     src={entrada.previewUrl}
                     alt=""
-                    className="h-full w-full object-cover"
+                    className={`h-full w-full bg-white ${recortar ? 'object-cover' : 'object-contain'}`}
                   />
                 ))}
               </div>

@@ -32,3 +32,28 @@ export function recortarParaLlenar(
   ctx.drawImage(img, origenX, origenY, anchoRecorte, altoRecorte, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/jpeg', 0.92);
 }
+
+/**
+ * Escala una imagen para que quepa completa dentro de un rectángulo destino
+ * sin recortarla ni deformarla (tipo CSS "object-fit: contain"). Devuelve el
+ * data URL y el tamaño real dibujado (menor o igual al destino) para que el
+ * llamador la pueda centrar.
+ */
+export function ajustarSinRecortar(
+  img: HTMLImageElement,
+  anchoMaxPx: number,
+  altoMaxPx: number,
+): { dataUrl: string; anchoPx: number; altoPx: number } {
+  const escala = Math.min(anchoMaxPx / img.width, altoMaxPx / img.height);
+  const anchoPx = Math.max(1, Math.round(img.width * escala));
+  const altoPx = Math.max(1, Math.round(img.height * escala));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = anchoPx;
+  canvas.height = altoPx;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No se pudo preparar el lienzo de ajuste.');
+
+  ctx.drawImage(img, 0, 0, anchoPx, altoPx);
+  return { dataUrl: canvas.toDataURL('image/jpeg', 0.92), anchoPx, altoPx };
+}
