@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PLANTILLAS_FOTO, TAMANOS_HOJA } from './plantillas';
 import { cargarImagen, recortarParaLlenar } from './imageUtils';
+import { imprimirPaginas } from './imprimir';
 
 interface EntradaFoto {
   id: string;
@@ -14,6 +15,8 @@ interface EntradaFoto {
 
 const DPI_EXPORTACION = 300;
 const CM_A_PULGADA = 2.54;
+/** Muchos clientes compran paquetes de 14 fotos tamaño infantil/credencial. */
+const COPIAS_INICIALES = 14;
 
 export function AcomodoFotosTab() {
   const [entradas, setEntradas] = useState<EntradaFoto[]>([]);
@@ -70,7 +73,7 @@ export function AcomodoFotosTab() {
             archivo,
             img,
             previewUrl: img.src,
-            copias: 1,
+            copias: COPIAS_INICIALES,
           } satisfies EntradaFoto;
         }),
       );
@@ -118,6 +121,26 @@ export function AcomodoFotosTab() {
       pdf.save('acomodo-fotos.pdf');
     } catch {
       setError('No se pudo generar el PDF.');
+    } finally {
+      setExportando(false);
+    }
+  }
+
+  async function handleImprimir() {
+    if (paginaRefs.current.length === 0) return;
+    setExportando(true);
+    setError(null);
+    try {
+      const nodos = paginaRefs.current.filter((nodo): nodo is HTMLDivElement => nodo !== null);
+      const paginasImprimibles = await Promise.all(
+        nodos.map(async (nodo) => {
+          const canvas = await html2canvas(nodo, { scale: 3, backgroundColor: '#ffffff' });
+          return { dataUrl: canvas.toDataURL('image/png') };
+        }),
+      );
+      imprimirPaginas(paginasImprimibles, hoja.anchoCm, hoja.altoCm);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo preparar la impresión.');
     } finally {
       setExportando(false);
     }
@@ -286,6 +309,13 @@ export function AcomodoFotosTab() {
       {paginas.length > 0 && (
         <div className="flex justify-end gap-2">
           <button
+            onClick={() => void handleImprimir()}
+            disabled={exportando}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            🖨️ Imprimir
+          </button>
+          <button
             onClick={() => void exportarPdf()}
             disabled={exportando}
             className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
@@ -327,6 +357,7 @@ export function AcomodoFotosTab() {
                 className="grid h-full w-full"
                 style={{
                   gridTemplateColumns: `repeat(${columnas}, 1fr)`,
+                  gridTemplateRows: `repeat(${filas}, 1fr)`,
                   gap: `${(espacioCm / hoja.altoCm) * 100}% ${(espacioCm / hoja.anchoCm) * 100}%`,
                 }}
               >

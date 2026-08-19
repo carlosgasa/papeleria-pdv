@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { AcomodoFotosTab } from './AcomodoFotosTab';
+import { CuadriculaImagenesTab } from './CuadriculaImagenesTab';
 import { CalculadoraTintaTab } from './CalculadoraTintaTab';
+import { PresupuestoTab } from './PresupuestoTab';
 
-type Pestana = 'acomodo' | 'tinta';
+type Pestana = 'acomodo' | 'cuadricula' | 'tinta' | 'presupuesto';
+
+const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
+  { valor: 'acomodo', etiqueta: 'Fotos por tamaño' },
+  { valor: 'cuadricula', etiqueta: 'Cuadrícula de imágenes' },
+  { valor: 'tinta', etiqueta: 'Calculadora de tinta' },
+  { valor: 'presupuesto', etiqueta: 'Presupuesto' },
+];
 
 export function ExperimentalPage() {
   const [pestana, setPestana] = useState<Pestana>('acomodo');
@@ -15,32 +24,28 @@ export function ExperimentalPage() {
           Herramientas independientes del punto de venta. No se guarda nada en la nube.
         </p>
 
-        <div className="mt-4 flex gap-1">
-          <button
-            onClick={() => setPestana('acomodo')}
-            className={`rounded-t-lg px-3 py-2 text-sm font-medium ${
-              pestana === 'acomodo'
-                ? 'border-b-2 border-brand-600 text-brand-600 dark:text-brand-400'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            Acomodo de fotos
-          </button>
-          <button
-            onClick={() => setPestana('tinta')}
-            className={`rounded-t-lg px-3 py-2 text-sm font-medium ${
-              pestana === 'tinta'
-                ? 'border-b-2 border-brand-600 text-brand-600 dark:text-brand-400'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            Calculadora de tinta
-          </button>
+        <div className="mt-4 flex flex-wrap gap-1">
+          {PESTANAS.map((p) => (
+            <button
+              key={p.valor}
+              onClick={() => setPestana(p.valor)}
+              className={`rounded-t-lg px-3 py-2 text-sm font-medium ${
+                pestana === p.valor
+                  ? 'border-b-2 border-brand-600 text-brand-600 dark:text-brand-400'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              {p.etiqueta}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="p-4 md:p-6">
-        {pestana === 'acomodo' ? <AcomodoFotosTab /> : <CalculadoraTintaTab />}
+        {pestana === 'acomodo' && <AcomodoFotosTab />}
+        {pestana === 'cuadricula' && <CuadriculaImagenesTab />}
+        {pestana === 'tinta' && <CalculadoraTintaTab />}
+        {pestana === 'presupuesto' && <PresupuestoTab />}
       </div>
     </div>
   );

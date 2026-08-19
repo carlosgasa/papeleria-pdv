@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { compartirImagenDeElemento, compartirTexto } from '../../shared/utils/compartir';
 import { generarPdfTicket, generarTextoTicket, type DetalleTicket } from './ticket';
 
 interface TicketVentaModalProps {
@@ -7,34 +8,36 @@ interface TicketVentaModalProps {
 }
 
 export function TicketVentaModal({ detalle, onCerrar }: TicketVentaModalProps) {
-  const [copiado, setCopiado] = useState(false);
-  const [errorCompartir, setErrorCompartir] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  const [procesando, setProcesando] = useState(false);
+  const ticketRef = useRef<HTMLPreElement>(null);
 
   function handleDescargarPdf() {
     const doc = generarPdfTicket(detalle);
     doc.save(`ticket-${detalle.ventaId.slice(0, 8)}.pdf`);
   }
 
-  async function handleCompartir() {
-    const texto = generarTextoTicket(detalle);
-    setErrorCompartir(null);
+  async function handleCompartirTexto() {
+    setMensaje(null);
+    const resultado = await compartirTexto(generarTextoTicket(detalle), 'Papelería André — Ticket de venta');
+    if (resultado === 'copiado') setMensaje('Ticket copiado — pégalo donde quieras enviarlo.');
+    else if (resultado === 'error') setMensaje('No se pudo compartir ni copiar el ticket.');
+  }
 
-    if (navigator.share) {
-      try {
-        await navigator.share({ text: texto, title: 'Papelería André — Ticket de venta' });
-        return;
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        // Si falla el share nativo, seguimos con el respaldo de copiar al portapapeles.
-      }
-    }
-
+  async function handleCompartirImagen() {
+    if (!ticketRef.current) return;
+    setMensaje(null);
+    setProcesando(true);
     try {
-      await navigator.clipboard.writeText(texto);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2500);
-    } catch {
-      setErrorCompartir('No se pudo compartir ni copiar el ticket.');
+      const resultado = await compartirImagenDeElemento(
+        ticketRef.current,
+        `ticket-${detalle.ventaId.slice(0, 8)}.png`,
+        'Papelería André — Ticket de venta',
+      );
+      if (resultado === 'descargado') setMensaje('Imagen descargada.');
+      else if (resultado === 'error') setMensaje('No se pudo generar la imagen del ticket.');
+    } finally {
+      setProcesando(false);
     }
   }
 
@@ -52,37 +55,44 @@ export function TicketVentaModal({ detalle, onCerrar }: TicketVentaModalProps) {
           </button>
         </div>
 
-        <pre className="whitespace-pre-wrap rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 font-mono text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+        <pre
+          ref={ticketRef}
+          className="whitespace-pre-wrap rounded-xl border border-dashed border-gray-300 bg-white p-3 font-mono text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        >
           {generarTextoTicket(detalle)}
         </pre>
 
-        {copiado && (
+        {mensaje && (
           <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-            Ticket copiado — pégalo donde quieras enviarlo.
-          </p>
-        )}
-        {errorCompartir && (
-          <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-400">
-            {errorCompartir}
+            {mensaje}
           </p>
         )}
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => void handleCompartir()}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            onClick={() => void handleCompartirTexto()}
+            className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
           >
-            📤 Compartir / copiar
+            💬 Texto
           </button>
           <button
             type="button"
-            onClick={handleDescargarPdf}
-            className="flex-1 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+            onClick={() => void handleCompartirImagen()}
+            disabled={procesando}
+            className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
           >
-            📄 Descargar PDF
+            🖼️ Imagen
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleDescargarPdf}
+          className="mt-2 w-full rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          📄 Descargar PDF
+        </button>
 
         <button
           type="button"
