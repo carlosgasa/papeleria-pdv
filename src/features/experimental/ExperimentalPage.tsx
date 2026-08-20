@@ -6,8 +6,9 @@ import { GafetesTab } from './GafetesTab';
 import { QrTab } from './QrTab';
 import { CalculadoraTintaTab } from './CalculadoraTintaTab';
 import { PresupuestoTab } from './PresupuestoTab';
+import { RespaldoTab } from './RespaldoTab';
 
-type Pestana = 'acomodo' | 'cuadricula' | 'documentos' | 'gafetes' | 'qr' | 'tinta' | 'presupuesto';
+type Pestana = 'acomodo' | 'cuadricula' | 'documentos' | 'gafetes' | 'qr' | 'tinta' | 'presupuesto' | 'respaldo';
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: 'acomodo', etiqueta: 'Fotos por tamaño' },
@@ -17,6 +18,7 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: 'qr', etiqueta: 'Código QR' },
   { valor: 'tinta', etiqueta: 'Tinta y precio de copias' },
   { valor: 'presupuesto', etiqueta: 'Presupuesto' },
+  { valor: 'respaldo', etiqueta: 'Respaldo de datos' },
 ];
 
 export function ExperimentalPage() {
@@ -55,6 +57,7 @@ export function ExperimentalPage() {
         {pestana === 'qr' && <QrTab />}
         {pestana === 'tinta' && <CalculadoraTintaTab />}
         {pestana === 'presupuesto' && <PresupuestoTab />}
+        {pestana === 'respaldo' && <RespaldoTab />}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { startOfDay, subDays, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Venta } from '../../domain/entities/Venta';
 import { calcularGanancia } from '../../domain/entities/Venta';
+import type { Producto } from '../../domain/entities/Producto';
 
 export interface ResumenPeriodo {
   totalVentas: number;
@@ -66,4 +67,36 @@ export function topProductos(ventas: Venta[], limite: number): ProductoVendido[]
 
 export function gananciaAcumulada(ventas: Venta[]): number {
   return ventas.filter((venta) => !venta.anulada).reduce((acc, venta) => acc + calcularGanancia(venta), 0);
+}
+
+export interface ProductoSinMovimiento {
+  producto: Producto;
+  valorInmovilizado: number;
+}
+
+/**
+ * Productos con stock que no aparecen en ninguna venta (no anulada) dentro de los
+ * últimos `dias` días. Útil para detectar mercancía que ya no se mueve y decidir
+ * si conviene dejar de reabastecerla o hacer una promoción para liquidarla.
+ */
+export function productosSinMovimiento(
+  ventas: Venta[],
+  productos: Producto[],
+  dias: number,
+  limite: number,
+): ProductoSinMovimiento[] {
+  const desde = Date.now() - dias * 24 * 60 * 60 * 1000;
+  const vendidosIds = new Set<string>();
+  for (const venta of ventas) {
+    if (venta.anulada || venta.fecha < desde) continue;
+    for (const item of venta.items) vendidosIds.add(item.productoId);
+  }
+
+  return productos
+    // creadoEn < desde evita marcar como "sin movimiento" productos recién dados de alta
+    // que todavía no han tenido tiempo de venderse.
+    .filter((producto) => producto.stock > 0 && producto.creadoEn < desde && !vendidosIds.has(producto.id))
+    .map((producto) => ({ producto, valorInmovilizado: producto.stock * producto.costo }))
+    .sort((a, b) => b.valorInmovilizado - a.valorInmovilizado)
+    .slice(0, limite);
 }

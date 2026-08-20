@@ -8,7 +8,7 @@ import { useAbonos } from '../../application/clientes/useAbonos';
 import { saldoPendienteCliente } from '../../application/clientes/saldo';
 import { topClientes } from '../../application/clientes/estadisticas';
 import { useOcultarSaldos } from '../../application/dashboard/useOcultarSaldos';
-import { gananciaAcumulada, resumenPeriodo, topProductos, ventasPorDia } from './estadisticas';
+import { gananciaAcumulada, productosSinMovimiento, resumenPeriodo, topProductos, ventasPorDia } from './estadisticas';
 import { VentasChart } from './VentasChart';
 import { InversionesPanel } from './InversionesPanel';
 import { ReportesPanel } from './ReportesPanel';
@@ -90,6 +90,7 @@ export function DashboardPage() {
   const mejoresClientes = useMemo(() => topClientes(ventas, clientes, 5), [ventas, clientes]);
   const ganancia = useMemo(() => gananciaAcumulada(ventas), [ventas]);
   const productosStockBajo = useMemo(() => productos.filter(tieneStockBajo), [productos]);
+  const sinMovimiento = useMemo(() => productosSinMovimiento(ventas, productos, 60, 8), [ventas, productos]);
   const porCobrar = useMemo(
     () =>
       clientes.reduce((acc, cliente) => acc + Math.max(0, saldoPendienteCliente(cliente.id, ventas, abonos)), 0),
@@ -214,6 +215,36 @@ export function DashboardPage() {
             <InversionesPanel gananciaAcumulada={ganancia} ocultarSaldos={ocultarSaldos} />
 
             <ReportesPanel ventas={ventas} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <TarjetaPanel titulo="Sin movimiento (60 días)" acento="teal">
+              {sinMovimiento.length === 0 ? (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Todos tus productos con stock han tenido ventas en los últimos 60 días.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Productos con stock que no se han vendido en 60 días — candidatos a promoción o a dejar de
+                    reabastecer.
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {sinMovimiento.map(({ producto, valorInmovilizado }) => (
+                      <li key={producto.id} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate text-gray-700 dark:text-gray-300">{producto.nombre}</span>
+                        <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+                          {producto.stock} en stock
+                        </span>
+                        <span className="shrink-0 font-semibold text-gray-900 dark:text-gray-50">
+                          {monto(valorInmovilizado)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </TarjetaPanel>
           </div>
         </>
       )}
