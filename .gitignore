@@ -28,6 +28,13 @@ dev-dist
 
 # Firebase CLI local cache
 .firebase/
+
+# Credenciales (service account key, si alguna vez se descarga para scripts admin)
+*firebase-adminsdk*.json
+serviceAccountKey.json
+*service-account*.json
+*.pem
+*.key
 .DS_Store
 *.suo
 *.ntvs*
