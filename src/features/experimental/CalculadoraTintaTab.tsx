@@ -26,6 +26,7 @@ export function CalculadoraTintaTab() {
   const [costoTintaPorMl, setCostoTintaPorMl] = useState(2.5);
   const [costoPapelPorHoja, setCostoPapelPorHoja] = useState(1.5);
   const [cantidadCopias, setCantidadCopias] = useState(1);
+  const [margenPorcentaje, setMargenPorcentaje] = useState(50);
 
   function handlePreset(id: string) {
     setPresetId(id);
@@ -42,13 +43,28 @@ export function CalculadoraTintaTab() {
     const costoTintaPorCopia = mlPorCopia * costoTintaPorMl;
     const costoPorCopia = costoTintaPorCopia + costoPapelPorHoja;
     const copias = Math.max(1, cantidadCopias);
+    const precioSugeridoPorCopia = costoPorCopia * (1 + Math.max(0, margenPorcentaje) / 100);
+    const costoTotal = costoPorCopia * copias;
+    const precioTotalSugerido = precioSugeridoPorCopia * copias;
     return {
       mlPorCopia,
       costoTintaPorCopia,
       costoPorCopia,
-      costoTotal: costoPorCopia * copias,
+      costoTotal,
+      precioSugeridoPorCopia,
+      precioTotalSugerido,
+      gananciaTotal: precioTotalSugerido - costoTotal,
     };
-  }, [anchoCm, altoCm, mlPorCm2, coberturaPorcentaje, costoTintaPorMl, costoPapelPorHoja, cantidadCopias]);
+  }, [
+    anchoCm,
+    altoCm,
+    mlPorCm2,
+    coberturaPorcentaje,
+    costoTintaPorMl,
+    costoPapelPorHoja,
+    cantidadCopias,
+    margenPorcentaje,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -159,6 +175,17 @@ export function CalculadoraTintaTab() {
               className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Margen de ganancia (%)</label>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              value={margenPorcentaje}
+              onChange={(e) => setMargenPorcentaje(Number(e.target.value))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            />
+          </div>
         </div>
       </div>
 
@@ -175,9 +202,21 @@ export function CalculadoraTintaTab() {
           <p className="text-xs text-gray-500 dark:text-gray-400">Costo total / copia</p>
           <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-50">${resultado.costoPorCopia.toFixed(2)}</p>
         </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Costo total ({cantidadCopias} copias)</p>
+          <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-50">${resultado.costoTotal.toFixed(2)}</p>
+        </div>
         <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950">
-          <p className="text-xs text-brand-700 dark:text-brand-300">Costo total ({cantidadCopias} copias)</p>
-          <p className="mt-1 text-lg font-bold text-brand-800 dark:text-brand-200">${resultado.costoTotal.toFixed(2)}</p>
+          <p className="text-xs text-brand-700 dark:text-brand-300">Precio sugerido / copia</p>
+          <p className="mt-1 text-lg font-bold text-brand-800 dark:text-brand-200">${resultado.precioSugeridoPorCopia.toFixed(2)}</p>
+        </div>
+        <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950">
+          <p className="text-xs text-brand-700 dark:text-brand-300">Precio total sugerido</p>
+          <p className="mt-1 text-lg font-bold text-brand-800 dark:text-brand-200">${resultado.precioTotalSugerido.toFixed(2)}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950 col-span-2 md:col-span-2">
+          <p className="text-xs text-emerald-700 dark:text-emerald-400">Ganancia total ({cantidadCopias} copias)</p>
+          <p className="mt-1 text-lg font-bold text-emerald-800 dark:text-emerald-300">${resultado.gananciaTotal.toFixed(2)}</p>
         </div>
       </div>
     </div>

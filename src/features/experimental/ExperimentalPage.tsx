@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import { AcomodoFotosTab } from './AcomodoFotosTab';
 import { CuadriculaImagenesTab } from './CuadriculaImagenesTab';
+import { DocumentosTab } from './DocumentosTab';
+import { GafetesTab } from './GafetesTab';
+import { QrTab } from './QrTab';
 import { CalculadoraTintaTab } from './CalculadoraTintaTab';
 import { PresupuestoTab } from './PresupuestoTab';
 
-type Pestana = 'acomodo' | 'cuadricula' | 'tinta' | 'presupuesto';
+type Pestana = 'acomodo' | 'cuadricula' | 'documentos' | 'gafetes' | 'qr' | 'tinta' | 'presupuesto';
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: 'acomodo', etiqueta: 'Fotos por tamaño' },
   { valor: 'cuadricula', etiqueta: 'Cuadrícula de imágenes' },
-  { valor: 'tinta', etiqueta: 'Calculadora de tinta' },
+  { valor: 'documentos', etiqueta: 'Reducir/ampliar documentos' },
+  { valor: 'gafetes', etiqueta: 'Gafetes y etiquetas' },
+  { valor: 'qr', etiqueta: 'Código QR' },
+  { valor: 'tinta', etiqueta: 'Tinta y precio de copias' },
   { valor: 'presupuesto', etiqueta: 'Presupuesto' },
 ];
 
@@ -44,6 +50,9 @@ export function ExperimentalPage() {
       <div className="p-4 md:p-6">
         {pestana === 'acomodo' && <AcomodoFotosTab />}
         {pestana === 'cuadricula' && <CuadriculaImagenesTab />}
+        {pestana === 'documentos' && <DocumentosTab />}
+        {pestana === 'gafetes' && <GafetesTab />}
+        {pestana === 'qr' && <QrTab />}
         {pestana === 'tinta' && <CalculadoraTintaTab />}
         {pestana === 'presupuesto' && <PresupuestoTab />}
       </div>
