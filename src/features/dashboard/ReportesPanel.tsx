@@ -10,7 +10,13 @@ function formatoInput(fecha: Date): string {
   return format(fecha, 'yyyy-MM-dd');
 }
 
-export function ReportesPanel({ ventas }: { ventas: Venta[] }) {
+/** Parsea un valor de <input type="date"> (yyyy-MM-dd) como fecha local, no UTC. */
+function parsearFechaLocal(input: string): Date {
+  const [anio, mes, dia] = input.split('-').map(Number);
+  return new Date(anio, mes - 1, dia);
+}
+
+export function ReportesPanel({ ventas, ocultarSaldos }: { ventas: Venta[]; ocultarSaldos: boolean }) {
   const [periodo, setPeriodo] = useState<Periodo>('hoy');
   const [desdeInput, setDesdeInput] = useState(formatoInput(startOfMonth(Date.now())));
   const [hastaInput, setHastaInput] = useState(formatoInput(new Date()));
@@ -20,7 +26,7 @@ export function ReportesPanel({ ventas }: { ventas: Venta[] }) {
     if (periodo === 'hoy') return { desde: startOfDay(ahora), hasta: endOfDay(ahora) };
     if (periodo === 'semana') return { desde: startOfWeek(ahora, { weekStartsOn: 1 }), hasta: endOfDay(ahora) };
     if (periodo === 'mes') return { desde: startOfMonth(ahora), hasta: endOfDay(ahora) };
-    return { desde: startOfDay(new Date(desdeInput)), hasta: endOfDay(new Date(hastaInput)) };
+    return { desde: startOfDay(parsearFechaLocal(desdeInput)), hasta: endOfDay(parsearFechaLocal(hastaInput)) };
   }, [periodo, desdeInput, hastaInput]);
 
   const ventasFiltradas = useMemo(
@@ -83,22 +89,28 @@ export function ReportesPanel({ ventas }: { ventas: Venta[] }) {
         {ventasFiltradas.length} venta(s) en el periodo seleccionado.
       </p>
 
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={handleExportarCsv}
-          disabled={ventasFiltradas.length === 0}
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-        >
-          📄 CSV
-        </button>
-        <button
-          onClick={handleExportarPdf}
-          disabled={ventasFiltradas.length === 0}
-          className="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-        >
-          📑 PDF
-        </button>
-      </div>
+      {ocultarSaldos ? (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+          Los montos están ocultos. Muestra los saldos para poder exportar el corte de caja.
+        </p>
+      ) : (
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={handleExportarCsv}
+            disabled={ventasFiltradas.length === 0}
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            📄 CSV
+          </button>
+          <button
+            onClick={handleExportarPdf}
+            disabled={ventasFiltradas.length === 0}
+            className="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            📑 PDF
+          </button>
+        </div>
+      )}
     </div>
   );
 }

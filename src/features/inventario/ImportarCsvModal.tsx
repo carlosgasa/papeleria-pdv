@@ -59,6 +59,7 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
       );
 
       const operaciones: OperacionLoteProducto[] = [];
+      const codigosNuevosEnArchivo = new Set<string>();
       let creados = 0;
       let actualizados = 0;
       for (const fila of validas) {
@@ -67,7 +68,12 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
         if (existente) {
           operaciones.push({ id: existente.id, datos });
           actualizados++;
+        } else if (datos.codigoBarras && codigosNuevosEnArchivo.has(datos.codigoBarras)) {
+          errores.push(
+            `Fila ${fila.numero}: código de barras "${datos.codigoBarras}" repetido en el archivo, se omitió esta fila.`,
+          );
         } else {
+          if (datos.codigoBarras) codigosNuevosEnArchivo.add(datos.codigoBarras);
           operaciones.push({ id: null, datos });
           creados++;
         }

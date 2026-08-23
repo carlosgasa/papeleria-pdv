@@ -326,7 +326,7 @@ export function GafetesTab() {
                 width: '100%',
                 maxWidth: 360,
                 aspectRatio: `${hoja.anchoCm} / ${hoja.altoCm}`,
-                padding: `${(margenCm / hoja.altoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
+                padding: `${(margenCm / hoja.anchoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
                 boxSizing: 'border-box',
               }}
             >

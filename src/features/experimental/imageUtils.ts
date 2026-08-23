@@ -3,7 +3,10 @@ export function cargarImagen(archivo: File): Promise<HTMLImageElement> {
     const url = URL.createObjectURL(archivo);
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`No se pudo cargar la imagen "${archivo.name}".`));
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`No se pudo cargar la imagen "${archivo.name}".`));
+    };
     img.src = url;
   });
 }

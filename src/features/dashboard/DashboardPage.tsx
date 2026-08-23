@@ -214,7 +214,7 @@ export function DashboardPage() {
 
             <InversionesPanel gananciaAcumulada={ganancia} ocultarSaldos={ocultarSaldos} />
 
-            <ReportesPanel ventas={ventas} />
+            <ReportesPanel ventas={ventas} ocultarSaldos={ocultarSaldos} />
           </div>
 
           <div className="grid grid-cols-1 gap-3">

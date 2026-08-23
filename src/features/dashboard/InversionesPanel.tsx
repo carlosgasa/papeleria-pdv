@@ -58,15 +58,19 @@ export function InversionesPanel({ gananciaAcumulada, ocultarSaldos = false }: I
         </div>
       </div>
 
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-        <div
-          className="h-full rounded-full bg-amber-500"
-          style={{ width: `${Math.min(100, Math.max(0, proporcionInversion))}%` }}
-        />
-      </div>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Inversión vs. ganancia acumulada
-      </p>
+      {!ocultarSaldos && (
+        <>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div
+              className="h-full rounded-full bg-amber-500"
+              style={{ width: `${Math.min(100, Math.max(0, proporcionInversion))}%` }}
+            />
+          </div>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Inversión vs. ganancia acumulada
+          </p>
+        </>
+      )}
 
       <div className="mt-3 max-h-48 space-y-1.5 overflow-y-auto">
         {cargando && <p className="text-xs text-gray-500 dark:text-gray-400">Cargando…</p>}

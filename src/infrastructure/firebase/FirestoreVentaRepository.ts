@@ -50,6 +50,11 @@ export class FirestoreVentaRepository implements VentaRepository {
    * mismo producto casi al mismo tiempo estando ambos sin conexión.
    */
   async registrarVenta(venta: NuevaVenta): Promise<string> {
+    const productosRepetidos = new Set(venta.items.map((i) => i.productoId)).size !== venta.items.length;
+    if (productosRepetidos) {
+      throw new Error('La venta tiene el mismo producto repetido en dos líneas; combínalas en una sola.');
+    }
+
     const ventaRef = doc(collection(db, COLECCION_VENTAS));
     const movimientoRefs = venta.items.map(() => doc(collection(db, COLECCION_MOVIMIENTOS)));
     const productoRefs = venta.items.map((item) => doc(db, COLECCION_PRODUCTOS, item.productoId));

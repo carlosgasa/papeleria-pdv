@@ -271,9 +271,14 @@ export function VentasPage() {
                           type="number"
                           min="1"
                           value={item.cantidad}
-                          onChange={(e) =>
-                            carrito.cambiarCantidad(item.productoId, Number(e.target.value) || 1, stockDisponible)
-                          }
+                          onChange={(e) => {
+                            const valor = Math.floor(Number(e.target.value));
+                            carrito.cambiarCantidad(
+                              item.productoId,
+                              Number.isFinite(valor) && valor > 0 ? valor : 1,
+                              stockDisponible,
+                            );
+                          }}
                           className="w-10 rounded border border-gray-300 bg-white text-center text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         />
                         <button

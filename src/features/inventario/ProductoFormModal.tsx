@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { Producto } from '../../domain/entities/Producto';
 import { useCategorias } from '../../application/inventario/useCategorias';
+import { useProductos } from '../../application/inventario/useProductos';
 import { container } from '../../infrastructure/container';
 import { eliminarImagenProducto, subirImagenProducto } from '../../infrastructure/firebase/storage';
 import { BarcodeScanner } from '../../shared/components/BarcodeScanner';
@@ -21,6 +22,7 @@ export function ProductoFormModal({
   onCerrar,
 }: ProductoFormModalProps) {
   const { categorias, crearCategoria } = useCategorias();
+  const { productos } = useProductos();
   const esEdicion = Boolean(producto);
 
   const [nombre, setNombre] = useState(producto?.nombre ?? '');
@@ -71,6 +73,17 @@ export function ProductoFormModal({
       return;
     }
 
+    const codigoBarrasFinal = codigoBarras.trim();
+    if (codigoBarrasFinal) {
+      const duplicado = productos.find(
+        (p) => p.codigoBarras === codigoBarrasFinal && p.id !== producto?.id,
+      );
+      if (duplicado) {
+        setError(`Ese código de barras ya lo tiene "${duplicado.nombre}".`);
+        return;
+      }
+    }
+
     setGuardando(true);
     try {
       let categoriaAGuardar = categoriaFinal;
@@ -81,7 +94,7 @@ export function ProductoFormModal({
 
       const datosBase = {
         nombre: nombre.trim(),
-        codigoBarras: codigoBarras.trim() || null,
+        codigoBarras: codigoBarrasFinal || null,
         categoria: categoriaAGuardar,
         costo: costoNum,
         precioVenta: precioVentaNum,

@@ -41,6 +41,9 @@ export class FirestoreMovimientoStockRepository implements MovimientoStockReposi
   }
 
   async registrarAjuste({ productoId, tipo, cantidad, motivo, usuarioId }: NuevoAjusteStock): Promise<void> {
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      throw new Error('La cantidad del ajuste debe ser un número mayor a 0.');
+    }
     const productoRef = doc(db, COLECCION_PRODUCTOS, productoId);
     const movimientoRef = doc(collection(db, COLECCION_MOVIMIENTOS));
 

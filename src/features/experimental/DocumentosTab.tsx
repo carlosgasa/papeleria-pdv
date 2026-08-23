@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PLANTILLAS_DOCUMENTO, TAMANOS_HOJA } from './plantillas';
@@ -28,6 +28,14 @@ export function DocumentosTab() {
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const entradasRef = useRef<EntradaDocumento[]>(entradas);
+  entradasRef.current = entradas;
+
+  useEffect(() => {
+    return () => {
+      entradasRef.current.forEach((e) => URL.revokeObjectURL(e.previewUrl));
+    };
+  }, []);
 
   const plantilla = useMemo(() => {
     const base = PLANTILLAS_DOCUMENTO.find((p) => p.id === plantillaId) ?? PLANTILLAS_DOCUMENTO[0];
@@ -63,21 +71,23 @@ export function DocumentosTab() {
   async function handleAgregarArchivos(archivos: FileList | null) {
     if (!archivos || archivos.length === 0) return;
     setError(null);
-    try {
-      const nuevas = await Promise.all(
-        Array.from(archivos).map(async (archivo) => {
-          const img = await cargarImagen(archivo);
-          return {
-            id: `${archivo.name}-${Date.now()}-${Math.random()}`,
-            archivo,
-            img,
-            previewUrl: img.src,
-            copias: COPIAS_INICIALES,
-          } satisfies EntradaDocumento;
-        }),
-      );
-      setEntradas((actuales) => [...actuales, ...nuevas]);
-    } catch {
+    const resultados = await Promise.allSettled(
+      Array.from(archivos).map(async (archivo) => {
+        const img = await cargarImagen(archivo);
+        return {
+          id: `${archivo.name}-${Date.now()}-${Math.random()}`,
+          archivo,
+          img,
+          previewUrl: img.src,
+          copias: COPIAS_INICIALES,
+        } satisfies EntradaDocumento;
+      }),
+    );
+    const nuevas = resultados
+      .filter((r): r is PromiseFulfilledResult<EntradaDocumento> => r.status === 'fulfilled')
+      .map((r) => r.value);
+    if (nuevas.length > 0) setEntradas((actuales) => [...actuales, ...nuevas]);
+    if (resultados.some((r) => r.status === 'rejected')) {
       setError('No se pudieron cargar uno o más documentos.');
     }
   }
@@ -326,7 +336,7 @@ export function DocumentosTab() {
                 width: '100%',
                 maxWidth: 360,
                 aspectRatio: `${hoja.anchoCm} / ${hoja.altoCm}`,
-                padding: `${(margenCm / hoja.altoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
+                padding: `${(margenCm / hoja.anchoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
                 boxSizing: 'border-box',
               }}
             >

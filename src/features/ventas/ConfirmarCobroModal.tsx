@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MetodoPago } from '../../domain/entities/Venta';
 import { useClientes } from '../../application/clientes/useClientes';
 import { container } from '../../infrastructure/container';
@@ -44,6 +44,11 @@ export function ConfirmarCobroModal({
   const [errorCliente, setErrorCliente] = useState<string | null>(null);
   const [unidadDescuento, setUnidadDescuento] = useState<'$' | '%'>('$');
   const [valorDescuento, setValorDescuento] = useState('');
+  const clienteCreadoIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (metodoPago !== 'efectivo') setMontoRecibido('');
+  }, [metodoPago]);
 
   const descuento = useMemo(() => {
     const valor = Number(valorDescuento);
@@ -64,24 +69,29 @@ export function ConfirmarCobroModal({
     let clienteIdFinal: string | null = null;
 
     if (clienteId === CLIENTE_NUEVO) {
-      if (!nombreClienteNuevo.trim()) {
-        setErrorCliente('Escribe el nombre del cliente.');
-        return;
-      }
-      setCreandoCliente(true);
-      setErrorCliente(null);
-      try {
-        clienteIdFinal = await container.clienteRepository.crear({
-          nombre: nombreClienteNuevo.trim(),
-          telefono: null,
-          notas: null,
-        });
-      } catch {
-        setErrorCliente('No se pudo crear el cliente.');
+      if (clienteCreadoIdRef.current) {
+        clienteIdFinal = clienteCreadoIdRef.current;
+      } else {
+        if (!nombreClienteNuevo.trim()) {
+          setErrorCliente('Escribe el nombre del cliente.');
+          return;
+        }
+        setCreandoCliente(true);
+        setErrorCliente(null);
+        try {
+          clienteIdFinal = await container.clienteRepository.crear({
+            nombre: nombreClienteNuevo.trim(),
+            telefono: null,
+            notas: null,
+          });
+          clienteCreadoIdRef.current = clienteIdFinal;
+        } catch {
+          setErrorCliente('No se pudo crear el cliente.');
+          setCreandoCliente(false);
+          return;
+        }
         setCreandoCliente(false);
-        return;
       }
-      setCreandoCliente(false);
     } else if (clienteId) {
       clienteIdFinal = clienteId;
     }
@@ -96,7 +106,10 @@ export function ConfirmarCobroModal({
       metodoPago,
       clienteId: clienteIdFinal,
       descuento,
-      montoRecibido: montoRecibido.trim() && !Number.isNaN(recibido) ? recibido : null,
+      montoRecibido:
+        metodoPago === 'efectivo' && montoRecibido.trim() && !Number.isNaN(recibido) && recibido >= 0
+          ? recibido
+          : null,
     });
   }
 
@@ -227,6 +240,7 @@ export function ConfirmarCobroModal({
             onChange={(e) => {
               setClienteId(e.target.value);
               setErrorCliente(null);
+              clienteCreadoIdRef.current = null;
             }}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           >

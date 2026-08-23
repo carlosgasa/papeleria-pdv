@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { TAMANOS_HOJA } from './plantillas';
@@ -52,6 +52,15 @@ export function CuadriculaImagenesTab() {
   const [exportando, setExportando] = useState(false);
   const [entradaEditandoId, setEntradaEditandoId] = useState<string | null>(null);
   const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const rotandoRef = useRef<Set<string>>(new Set());
+  const entradasRef = useRef<EntradaImagen[]>(entradas);
+  entradasRef.current = entradas;
+
+  useEffect(() => {
+    return () => {
+      entradasRef.current.forEach((e) => URL.revokeObjectURL(e.previewUrl));
+    };
+  }, []);
 
   const hoja = useMemo(() => {
     const base = TAMANOS_HOJA.find((h) => h.id === hojaId) ?? TAMANOS_HOJA[0];
@@ -79,24 +88,26 @@ export function CuadriculaImagenesTab() {
   async function handleAgregarArchivos(archivos: FileList | null) {
     if (!archivos || archivos.length === 0) return;
     setError(null);
-    try {
-      const nuevas = await Promise.all(
-        Array.from(archivos).map(async (archivo) => {
-          const img = await cargarImagen(archivo);
-          return {
-            id: `${archivo.name}-${Date.now()}-${Math.random()}`,
-            archivo,
-            img,
-            previewUrl: img.src,
-            ajuste: AJUSTE_RECORTE_DEFECTO,
-            rotacion: 0,
-            imgRotada: img,
-            previewUrlRotada: img.src,
-          } satisfies EntradaImagen;
-        }),
-      );
-      setEntradas((actuales) => [...actuales, ...nuevas]);
-    } catch {
+    const resultados = await Promise.allSettled(
+      Array.from(archivos).map(async (archivo): Promise<EntradaImagen> => {
+        const img = await cargarImagen(archivo);
+        return {
+          id: `${archivo.name}-${Date.now()}-${Math.random()}`,
+          archivo,
+          img,
+          previewUrl: img.src,
+          ajuste: AJUSTE_RECORTE_DEFECTO,
+          rotacion: 0,
+          imgRotada: img,
+          previewUrlRotada: img.src,
+        };
+      }),
+    );
+    const nuevas = resultados
+      .filter((r): r is PromiseFulfilledResult<EntradaImagen> => r.status === 'fulfilled')
+      .map((r) => r.value);
+    if (nuevas.length > 0) setEntradas((actuales) => [...actuales, ...nuevas]);
+    if (resultados.some((r) => r.status === 'rejected')) {
       setError('No se pudieron cargar una o más imágenes.');
     }
   }
@@ -125,8 +136,10 @@ export function CuadriculaImagenesTab() {
   }
 
   async function rotarEntrada(id: string) {
+    if (rotandoRef.current.has(id)) return;
     const entrada = entradas.find((e) => e.id === id);
     if (!entrada) return;
+    rotandoRef.current.add(id);
     const nuevaRotacion = ((entrada.rotacion + 90) % 360) as Rotacion;
     try {
       if (nuevaRotacion === 0) {
@@ -150,6 +163,8 @@ export function CuadriculaImagenesTab() {
       );
     } catch {
       setError('No se pudo girar la imagen.');
+    } finally {
+      rotandoRef.current.delete(id);
     }
   }
 
@@ -464,7 +479,7 @@ export function CuadriculaImagenesTab() {
                 width: '100%',
                 maxWidth: 360,
                 aspectRatio: `${hoja.anchoCm} / ${hoja.altoCm}`,
-                padding: `${(margenCm / hoja.altoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
+                padding: `${(margenCm / hoja.anchoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
                 boxSizing: 'border-box',
               }}
             >
