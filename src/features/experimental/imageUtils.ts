@@ -8,6 +8,37 @@ export function cargarImagen(archivo: File): Promise<HTMLImageElement> {
   });
 }
 
+export type Rotacion = 0 | 90 | 180 | 270;
+
+/**
+ * Dibuja la imagen rotada (múltiplos de 90°) sobre un canvas y devuelve el
+ * data URL resultante. Siempre parte de la imagen original, no de una ya
+ * rotada, para no perder calidad al girar varias veces.
+ */
+export function rotarImagenDataUrl(img: HTMLImageElement, rotacion: Rotacion): string {
+  const intercambiar = rotacion === 90 || rotacion === 270;
+  const width = intercambiar ? img.height : img.width;
+  const height = intercambiar ? img.width : img.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No se pudo preparar el lienzo de rotación.');
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate((rotacion * Math.PI) / 180);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  return canvas.toDataURL('image/png');
+}
+
+export function cargarImagenDesdeUrl(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo procesar la imagen rotada.'));
+    img.src = url;
+  });
+}
+
 /**
  * Recorta y escala una imagen para llenar por completo un rectángulo destino
  * (comportamiento tipo CSS "object-fit: cover"), devolviendo un data URL JPEG.

@@ -6,9 +6,12 @@ import {
   AJUSTE_RECORTE_DEFECTO,
   ajustarSinRecortar,
   cargarImagen,
+  cargarImagenDesdeUrl,
   estiloRecorte,
   recortarConAjuste,
+  rotarImagenDataUrl,
   type AjusteRecorte,
+  type Rotacion,
 } from './imageUtils';
 import { imprimirPaginas } from './imprimir';
 import { AjustarRecorteModal } from './AjustarRecorteModal';
@@ -19,6 +22,9 @@ interface EntradaImagen {
   img: HTMLImageElement;
   previewUrl: string;
   ajuste: AjusteRecorte;
+  rotacion: Rotacion;
+  imgRotada: HTMLImageElement;
+  previewUrlRotada: string;
 }
 
 const DPI_EXPORTACION = 300;
@@ -37,6 +43,7 @@ export function CuadriculaImagenesTab() {
   const [columnas, setColumnas] = useState(4);
   const [filas, setFilas] = useState(4);
   const [hojaId, setHojaId] = useState(TAMANOS_HOJA[0].id);
+  const [orientacionHoja, setOrientacionHoja] = useState<'vertical' | 'horizontal'>('vertical');
   const [titulo, setTitulo] = useState('');
   const margenCm = 0.5;
   const [espacioCm, setEspacioCm] = useState(0.2);
@@ -46,7 +53,12 @@ export function CuadriculaImagenesTab() {
   const [entradaEditandoId, setEntradaEditandoId] = useState<string | null>(null);
   const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const hoja = useMemo(() => TAMANOS_HOJA.find((h) => h.id === hojaId) ?? TAMANOS_HOJA[0], [hojaId]);
+  const hoja = useMemo(() => {
+    const base = TAMANOS_HOJA.find((h) => h.id === hojaId) ?? TAMANOS_HOJA[0];
+    return orientacionHoja === 'horizontal'
+      ? { ...base, anchoCm: base.altoCm, altoCm: base.anchoCm }
+      : base;
+  }, [hojaId, orientacionHoja]);
   const slotsPorHoja = Math.max(1, columnas) * Math.max(1, filas);
   const celdaAspecto = useMemo(() => {
     const areaAncho = hoja.anchoCm - 2 * margenCm - (columnas - 1) * espacioCm;
@@ -77,6 +89,9 @@ export function CuadriculaImagenesTab() {
             img,
             previewUrl: img.src,
             ajuste: AJUSTE_RECORTE_DEFECTO,
+            rotacion: 0,
+            imgRotada: img,
+            previewUrlRotada: img.src,
           } satisfies EntradaImagen;
         }),
       );
@@ -107,6 +122,35 @@ export function CuadriculaImagenesTab() {
   function actualizarAjuste(id: string, ajuste: AjusteRecorte) {
     setEntradas((actuales) => actuales.map((e) => (e.id === id ? { ...e, ajuste } : e)));
     setEntradaEditandoId(null);
+  }
+
+  async function rotarEntrada(id: string) {
+    const entrada = entradas.find((e) => e.id === id);
+    if (!entrada) return;
+    const nuevaRotacion = ((entrada.rotacion + 90) % 360) as Rotacion;
+    try {
+      if (nuevaRotacion === 0) {
+        setEntradas((actuales) =>
+          actuales.map((e) =>
+            e.id === id
+              ? { ...e, rotacion: 0, imgRotada: e.img, previewUrlRotada: e.previewUrl, ajuste: AJUSTE_RECORTE_DEFECTO }
+              : e,
+          ),
+        );
+        return;
+      }
+      const dataUrl = rotarImagenDataUrl(entrada.img, nuevaRotacion);
+      const imgRotada = await cargarImagenDesdeUrl(dataUrl);
+      setEntradas((actuales) =>
+        actuales.map((e) =>
+          e.id === id
+            ? { ...e, rotacion: nuevaRotacion, imgRotada, previewUrlRotada: dataUrl, ajuste: AJUSTE_RECORTE_DEFECTO }
+            : e,
+        ),
+      );
+    } catch {
+      setError('No se pudo girar la imagen.');
+    }
   }
 
   function calcularCeldas() {
@@ -144,10 +188,10 @@ export function CuadriculaImagenesTab() {
           const y = margenCm + alturaTitulo + fila * (celdaAlto + espacioCm);
 
           if (recortar) {
-            const dataUrl = recortarConAjuste(entrada.img, anchoPx, altoPx, entrada.ajuste);
+            const dataUrl = recortarConAjuste(entrada.imgRotada, anchoPx, altoPx, entrada.ajuste);
             pdf.addImage(dataUrl, 'JPEG', x, y, celdaAncho, celdaAlto);
           } else {
-            const ajustada = ajustarSinRecortar(entrada.img, anchoPx, altoPx);
+            const ajustada = ajustarSinRecortar(entrada.imgRotada, anchoPx, altoPx);
             const anchoImgCm = (ajustada.anchoPx / DPI_EXPORTACION) * CM_A_PULGADA;
             const altoImgCm = (ajustada.altoPx / DPI_EXPORTACION) * CM_A_PULGADA;
             const offsetX = (celdaAncho - anchoImgCm) / 2;
@@ -217,7 +261,15 @@ export function CuadriculaImagenesTab() {
             <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
               {entradas.map((entrada) => (
                 <div key={entrada.id} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-                  <img src={entrada.previewUrl} alt="" className="h-full w-full object-cover" />
+                  <img src={entrada.previewUrlRotada} alt="" className="h-full w-full object-cover" />
+                  <button
+                    onClick={() => void rotarEntrada(entrada.id)}
+                    className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                    aria-label="Girar"
+                    title="Girar 90°"
+                  >
+                    ↻
+                  </button>
                   <button
                     onClick={() => quitarEntrada(entrada.id)}
                     className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
@@ -302,6 +354,33 @@ export function CuadriculaImagenesTab() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Orientación de la hoja</label>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setOrientacionHoja('vertical')}
+                className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                  orientacionHoja === 'vertical'
+                    ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300'
+                    : 'border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'
+                }`}
+              >
+                ↕️ Vertical
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrientacionHoja('horizontal')}
+                className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                  orientacionHoja === 'horizontal'
+                    ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300'
+                    : 'border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'
+                }`}
+              >
+                ↔️ Horizontal
+              </button>
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Espacio (cm)</label>
@@ -409,15 +488,23 @@ export function CuadriculaImagenesTab() {
                       className="group relative h-full w-full overflow-hidden bg-white"
                     >
                       <img
-                        src={entrada.previewUrl}
+                        src={entrada.previewUrlRotada}
                         alt=""
                         className="absolute"
                         style={{
-                          ...estiloRecorte(entrada.img, celdaAspecto, entrada.ajuste),
+                          ...estiloRecorte(entrada.imgRotada, celdaAspecto, entrada.ajuste),
                           maxWidth: 'none',
                           maxHeight: 'none',
                         }}
                       />
+                      <button
+                        onClick={() => void rotarEntrada(entrada.id)}
+                        className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
+                        aria-label="Girar"
+                        title="Girar 90°"
+                      >
+                        ↻
+                      </button>
                       <button
                         onClick={() => setEntradaEditandoId(entrada.id)}
                         className="absolute bottom-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
@@ -428,12 +515,21 @@ export function CuadriculaImagenesTab() {
                       </button>
                     </div>
                   ) : (
-                    <img
-                      key={`${entrada.id}-${indiceSlot}`}
-                      src={entrada.previewUrl}
-                      alt=""
-                      className="h-full w-full bg-white object-contain"
-                    />
+                    <div key={`${entrada.id}-${indiceSlot}`} className="group relative h-full w-full bg-white">
+                      <img
+                        src={entrada.previewUrlRotada}
+                        alt=""
+                        className="h-full w-full object-contain"
+                      />
+                      <button
+                        onClick={() => void rotarEntrada(entrada.id)}
+                        className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
+                        aria-label="Girar"
+                        title="Girar 90°"
+                      >
+                        ↻
+                      </button>
+                    </div>
                   ),
                 )}
               </div>
@@ -448,8 +544,8 @@ export function CuadriculaImagenesTab() {
           if (!entrada) return null;
           return (
             <AjustarRecorteModal
-              previewUrl={entrada.previewUrl}
-              img={entrada.img}
+              previewUrl={entrada.previewUrlRotada}
+              img={entrada.imgRotada}
               celdaAspecto={celdaAspecto}
               ajusteInicial={entrada.ajuste}
               onGuardar={(ajuste) => actualizarAjuste(entrada.id, ajuste)}
