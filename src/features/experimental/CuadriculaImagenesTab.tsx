@@ -474,13 +474,14 @@ export function CuadriculaImagenesTab() {
               ref={(el) => {
                 paginaRefs.current[indicePagina] = el;
               }}
-              className="mx-auto flex flex-col bg-white shadow-sm"
+              className="mx-auto flex flex-col shadow-sm"
               style={{
                 width: '100%',
                 maxWidth: 360,
                 aspectRatio: `${hoja.anchoCm} / ${hoja.altoCm}`,
                 padding: `${(margenCm / hoja.anchoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
                 boxSizing: 'border-box',
+                backgroundColor: '#ffffff',
               }}
             >
               {titulo.trim() && (
@@ -500,7 +501,8 @@ export function CuadriculaImagenesTab() {
                   recortar ? (
                     <div
                       key={`${entrada.id}-${indiceSlot}`}
-                      className="group relative h-full w-full overflow-hidden bg-white"
+                      className="group relative h-full w-full overflow-hidden"
+                      style={{ backgroundColor: '#ffffff' }}
                     >
                       <img
                         src={entrada.previewUrlRotada}
@@ -530,7 +532,11 @@ export function CuadriculaImagenesTab() {
                       </button>
                     </div>
                   ) : (
-                    <div key={`${entrada.id}-${indiceSlot}`} className="group relative h-full w-full bg-white">
+                    <div
+                      key={`${entrada.id}-${indiceSlot}`}
+                      className="group relative h-full w-full"
+                      style={{ backgroundColor: '#ffffff' }}
+                    >
                       <img
                         src={entrada.previewUrlRotada}
                         alt=""
