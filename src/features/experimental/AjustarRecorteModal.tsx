@@ -38,11 +38,17 @@ export function AjustarRecorteModal({
   }
 
   function handlePointerMove(evento: ReactPointerEvent<HTMLDivElement>) {
-    if (!arrastreRef.current || !contenedorRef.current) return;
+    // Se copia a una variable local (en vez de releer arrastreRef.current dentro
+    // del callback de setAjuste, más abajo): en móvil un arrastre rápido puede
+    // disparar pointerup — que limpia la referencia a null de inmediato — antes
+    // de que React llegue a ejecutar la actualización de estado encolada por
+    // este pointermove, y esa lectura tardía terminaba leyendo `null`.
+    const inicio = arrastreRef.current;
+    if (!inicio || !contenedorRef.current) return;
     const rect = contenedorRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    const deltaXPct = ((evento.clientX - arrastreRef.current.x) / rect.width) * 100;
-    const deltaYPct = ((evento.clientY - arrastreRef.current.y) / rect.height) * 100;
+    const deltaXPct = ((evento.clientX - inicio.x) / rect.width) * 100;
+    const deltaYPct = ((evento.clientY - inicio.y) / rect.height) * 100;
 
     setAjuste((actual) => {
       // Recalculado a partir del zoom más reciente (no del `estilo` cerrado en el
@@ -51,10 +57,8 @@ export function AjustarRecorteModal({
       const estiloActual = estiloRecorte(img, celdaAspecto, actual);
       const excesoAncho = Number(estiloActual.width.replace('%', '')) - 100;
       const excesoAlto = Number(estiloActual.height.replace('%', '')) - 100;
-      const nuevoPosX =
-        excesoAncho > 0 ? arrastreRef.current!.posX - deltaXPct / excesoAncho : actual.posX;
-      const nuevoPosY =
-        excesoAlto > 0 ? arrastreRef.current!.posY - deltaYPct / excesoAlto : actual.posY;
+      const nuevoPosX = excesoAncho > 0 ? inicio.posX - deltaXPct / excesoAncho : actual.posX;
+      const nuevoPosY = excesoAlto > 0 ? inicio.posY - deltaYPct / excesoAlto : actual.posY;
       return {
         ...actual,
         posX: Math.min(1, Math.max(0, nuevoPosX)),
