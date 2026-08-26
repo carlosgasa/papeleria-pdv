@@ -6,6 +6,7 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   error: Error | null;
+  info: string | null;
 }
 
 /**
@@ -14,14 +15,15 @@ interface ErrorBoundaryState {
  * un mensaje con opción de recargar en vez de un blanco total.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null };
+  state: ErrorBoundaryState = { error: null, info: null };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error('Error no controlado en la app:', error, info.componentStack);
+    this.setState({ info: info.componentStack ?? null });
   }
 
   render() {
@@ -42,6 +44,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         >
           Recargar
         </button>
+        <details className="mt-2 w-full max-w-sm text-left">
+          <summary className="cursor-pointer text-xs text-gray-400 dark:text-gray-500">
+            Detalle técnico (para reportar el problema)
+          </summary>
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-100 p-2 text-[10px] text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+            {this.state.error.name}: {this.state.error.message}
+            {this.state.error.stack ? `\n\n${this.state.error.stack}` : ''}
+            {this.state.info ? `\n\n${this.state.info}` : ''}
+          </pre>
+        </details>
       </div>
     );
   }
