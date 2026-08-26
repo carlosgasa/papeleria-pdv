@@ -331,13 +331,14 @@ export function DocumentosTab() {
               ref={(el) => {
                 paginaRefs.current[indicePagina] = el;
               }}
-              className="mx-auto bg-white shadow-sm"
+              className="mx-auto shadow-sm"
               style={{
                 width: '100%',
                 maxWidth: 360,
                 aspectRatio: `${hoja.anchoCm} / ${hoja.altoCm}`,
                 padding: `${(margenCm / hoja.anchoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
                 boxSizing: 'border-box',
+                backgroundColor: '#ffffff',
               }}
             >
               <div

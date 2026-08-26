@@ -81,10 +81,10 @@ export function ClientesPage() {
         />
       </div>
 
-      <div className="space-y-2 p-4 md:p-6">
-        {cargando && <p className="text-sm text-gray-500 dark:text-gray-400">Cargando clientes…</p>}
+      <div className="grid grid-cols-1 items-start gap-2 p-4 md:grid-cols-2 md:p-6">
+        {cargando && <p className="col-span-full text-sm text-gray-500 dark:text-gray-400">Cargando clientes…</p>}
         {!cargando && filtrados.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="col-span-full text-sm text-gray-500 dark:text-gray-400">
             {clientes.length === 0 ? 'Aún no hay clientes registrados.' : 'No se encontraron clientes.'}
           </p>
         )}

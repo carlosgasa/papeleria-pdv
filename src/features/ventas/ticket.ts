@@ -60,62 +60,73 @@ export function generarPdfTicket(detalle: DetalleTicket): jsPDF {
   const margenMm = 4;
   const anchoUtil = anchoMm - margenMm * 2;
 
-  // Alto aproximado según el contenido, para no dejar una hoja larga vacía.
-  const altoEstimadoMm = 40 + detalle.items.length * 8 + (detalle.descuento > 0 ? 10 : 0) + 20;
+  // Dibuja todo el contenido sobre `doc` y devuelve el alto final ocupado.
+  // Se usa dos veces: una para medir (nombres de producto o de cliente largos
+  // envuelven a varias líneas y el alto no es predecible de antemano) y otra
+  // para dibujar de verdad sobre una página ya del tamaño exacto que hace falta.
+  function construir(doc: jsPDF): number {
+    let y = margenMm + 4;
 
-  const doc = new jsPDF({ unit: 'mm', format: [anchoMm, altoEstimadoMm] });
-  let y = margenMm + 4;
+    function centrado(texto: string, tamano = 10, negrita = false) {
+      doc.setFontSize(tamano);
+      doc.setFont('helvetica', negrita ? 'bold' : 'normal');
+      doc.text(texto, anchoMm / 2, y, { align: 'center' });
+      y += tamano * 0.45 + 1.5;
+    }
 
-  function centrado(texto: string, tamano = 10, negrita = false) {
-    doc.setFontSize(tamano);
-    doc.setFont('helvetica', negrita ? 'bold' : 'normal');
-    doc.text(texto, anchoMm / 2, y, { align: 'center' });
-    y += tamano * 0.45 + 1.5;
+    function linea(texto: string, tamano = 8) {
+      doc.setFontSize(tamano);
+      doc.setFont('helvetica', 'normal');
+      const partes = doc.splitTextToSize(texto, anchoUtil);
+      doc.text(partes, margenMm, y);
+      y += (Array.isArray(partes) ? partes.length : 1) * (tamano * 0.4) + 1;
+    }
+
+    function separador() {
+      doc.setDrawColor(180);
+      doc.line(margenMm, y, anchoMm - margenMm, y);
+      y += 3;
+    }
+
+    centrado('Papelería André', 12, true);
+    centrado(format(detalle.fecha, "d 'de' MMMM yyyy, HH:mm", { locale: es }), 8);
+    y += 1;
+    separador();
+
+    for (const item of detalle.items) {
+      linea(`${item.cantidad} x ${item.nombre}`);
+      linea(`   $${item.precioUnitario.toFixed(2)} c/u = $${(item.cantidad * item.precioUnitario).toFixed(2)}`);
+    }
+
+    separador();
+    if (detalle.descuento > 0) {
+      linea(`Subtotal: $${detalle.subtotal.toFixed(2)}`);
+      linea(`Descuento: -$${detalle.descuento.toFixed(2)}`);
+    }
+    centrado(`Total: $${detalle.total.toFixed(2)}`, 11, true);
+    linea(`Pago: ${ETIQUETA_METODO[detalle.metodoPago]}`);
+    if (detalle.montoRecibido !== null) {
+      linea(`Recibido: $${detalle.montoRecibido.toFixed(2)}`);
+    }
+    if (detalle.cambio !== null && detalle.cambio > 0) {
+      linea(`Cambio: $${detalle.cambio.toFixed(2)}`);
+    }
+    if (detalle.clienteNombre) {
+      linea(`Cliente: ${detalle.clienteNombre}`);
+    }
+    y += 2;
+    separador();
+    centrado('¡Gracias por tu compra!', 9);
+
+    return y;
   }
 
-  function linea(texto: string, tamano = 8) {
-    doc.setFontSize(tamano);
-    doc.setFont('helvetica', 'normal');
-    const partes = doc.splitTextToSize(texto, anchoUtil);
-    doc.text(partes, margenMm, y);
-    y += (Array.isArray(partes) ? partes.length : 1) * (tamano * 0.4) + 1;
-  }
+  // El tamaño de la página no afecta cómo se envuelve el texto (depende solo
+  // de la fuente), así que una página de sobra sirve para medir sin cortar nada.
+  const medidor = new jsPDF({ unit: 'mm', format: [anchoMm, 1000] });
+  const altoNecesario = construir(medidor);
 
-  function separador() {
-    doc.setDrawColor(180);
-    doc.line(margenMm, y, anchoMm - margenMm, y);
-    y += 3;
-  }
-
-  centrado('Papelería André', 12, true);
-  centrado(format(detalle.fecha, "d 'de' MMMM yyyy, HH:mm", { locale: es }), 8);
-  y += 1;
-  separador();
-
-  for (const item of detalle.items) {
-    linea(`${item.cantidad} x ${item.nombre}`);
-    linea(`   $${item.precioUnitario.toFixed(2)} c/u = $${(item.cantidad * item.precioUnitario).toFixed(2)}`);
-  }
-
-  separador();
-  if (detalle.descuento > 0) {
-    linea(`Subtotal: $${detalle.subtotal.toFixed(2)}`);
-    linea(`Descuento: -$${detalle.descuento.toFixed(2)}`);
-  }
-  centrado(`Total: $${detalle.total.toFixed(2)}`, 11, true);
-  linea(`Pago: ${ETIQUETA_METODO[detalle.metodoPago]}`);
-  if (detalle.montoRecibido !== null) {
-    linea(`Recibido: $${detalle.montoRecibido.toFixed(2)}`);
-  }
-  if (detalle.cambio !== null && detalle.cambio > 0) {
-    linea(`Cambio: $${detalle.cambio.toFixed(2)}`);
-  }
-  if (detalle.clienteNombre) {
-    linea(`Cliente: ${detalle.clienteNombre}`);
-  }
-  y += 2;
-  separador();
-  centrado('¡Gracias por tu compra!', 9);
-
+  const doc = new jsPDF({ unit: 'mm', format: [anchoMm, altoNecesario + margenMm] });
+  construir(doc);
   return doc;
 }

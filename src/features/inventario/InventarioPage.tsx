@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import type { Producto } from '../../domain/entities/Producto';
-import { tieneStockBajo } from '../../domain/entities/Producto';
+import { margenGanancia, tieneStockBajo } from '../../domain/entities/Producto';
 import { useProductos } from '../../application/inventario/useProductos';
 import { container } from '../../infrastructure/container';
 import { BarcodeScanner } from '../../shared/components/BarcodeScanner';
@@ -9,10 +9,12 @@ import { ProductoFormModal } from './ProductoFormModal';
 import { ImportarCsvModal } from './ImportarCsvModal';
 import { AjusteStockModal } from './AjusteStockModal';
 import { MovimientosStockTab } from './MovimientosStockTab';
+import { CostosTab } from './CostosTab';
 import { plantillaProductosCsv, productosACsv } from './csv';
 import { descargarArchivo } from '../../shared/utils/descargarArchivo';
+import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
 
-type Pestana = 'productos' | 'movimientos';
+type Pestana = 'productos' | 'movimientos' | 'costos';
 
 export function InventarioPage() {
   const { productos, cargando } = useProductos();
@@ -45,6 +47,16 @@ export function InventarioPage() {
         producto.categoria.toLowerCase().includes(termino),
     );
   }, [productos, busqueda]);
+
+  const conteoPorCategoria = useMemo(() => {
+    const conteo = new Map<string, number>();
+    for (const producto of productos) {
+      conteo.set(producto.categoria, (conteo.get(producto.categoria) ?? 0) + 1);
+    }
+    return [...conteo.entries()]
+      .map(([categoria, total]) => ({ categoria, total }))
+      .sort((a, b) => b.total - a.total);
+  }, [productos]);
 
   function abrirNuevo() {
     setProductoEnEdicion(null);
@@ -140,6 +152,16 @@ export function InventarioPage() {
           >
             Movimientos
           </button>
+          <button
+            onClick={() => setPestana('costos')}
+            className={`rounded-t-lg px-3 py-2 text-sm font-medium ${
+              pestana === 'costos'
+                ? 'border-b-2 border-brand-600 text-brand-600 dark:text-brand-400'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            Costos
+          </button>
         </div>
 
         {pestana === 'productos' && (
@@ -155,18 +177,36 @@ export function InventarioPage() {
             {buscandoCodigo && (
               <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Buscando producto…</p>
             )}
+
+            {productos.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="rounded-full bg-brand-50 px-2.5 py-1 font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+                  {productos.length} producto{productos.length === 1 ? '' : 's'} en total
+                </span>
+                {conteoPorCategoria.map(({ categoria, total }) => (
+                  <span
+                    key={categoria}
+                    className="rounded-full border border-gray-200 px-2.5 py-1 text-gray-600 dark:border-gray-700 dark:text-gray-300"
+                  >
+                    {emojiDeCategoria(categoria)} {categoria}: {total}
+                  </span>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
 
       {pestana === 'movimientos' ? (
         <MovimientosStockTab />
+      ) : pestana === 'costos' ? (
+        <CostosTab />
       ) : (
-        <div className="space-y-2 p-4 md:p-6">
-          {cargando && <p className="text-sm text-gray-500 dark:text-gray-400">Cargando productos…</p>}
+        <div className="grid grid-cols-1 items-start gap-2 p-4 md:grid-cols-2 md:p-6">
+          {cargando && <p className="col-span-full text-sm text-gray-500 dark:text-gray-400">Cargando productos…</p>}
 
           {!cargando && productosFiltrados.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="col-span-full text-sm text-gray-500 dark:text-gray-400">
               {productos.length === 0
                 ? 'Aún no hay productos. Crea uno o escanea un código de barras.'
                 : 'No se encontraron productos con ese criterio.'}
@@ -186,7 +226,7 @@ export function InventarioPage() {
                   {producto.imagenUrl ? (
                     <img src={producto.imagenUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-xl">📦</span>
+                    <span className="text-xl">{emojiDeCategoria(producto.categoria)}</span>
                   )}
                 </div>
 
@@ -195,6 +235,12 @@ export function InventarioPage() {
                   <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                     {producto.categoria}
                     {producto.codigoBarras ? ` · ${producto.codigoBarras}` : ''}
+                  </p>
+                  <p className="truncate text-[11px] text-gray-400 dark:text-gray-500">
+                    Costo: ${producto.costo.toFixed(2)} · Margen: ${margenGanancia(producto).toFixed(2)}
+                    {producto.costo > 0 && ` (${((margenGanancia(producto) / producto.costo) * 100).toFixed(0)}%)`}
+                    {' · Mín: '}
+                    {producto.stockMinimo}
                   </p>
                 </div>
 

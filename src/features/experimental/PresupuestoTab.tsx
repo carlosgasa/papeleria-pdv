@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { useProductos } from '../../application/inventario/useProductos';
+import { useClientes } from '../../application/clientes/useClientes';
 import { compartirImagenDeElemento, compartirTexto } from '../../shared/utils/compartir';
+import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
 
 interface ItemPresupuesto {
   id: string;
@@ -9,6 +11,8 @@ interface ItemPresupuesto {
   cantidad: number;
   precioUnitario: number;
 }
+
+const CLIENTE_OTRO = '__otro__';
 
 function nuevoId(): string {
   return `${Date.now()}-${Math.random()}`;
@@ -30,17 +34,25 @@ function generarTextoPresupuesto(cliente: string, items: ItemPresupuesto[], tota
 
 export function PresupuestoTab() {
   const { productos } = useProductos();
-  const [cliente, setCliente] = useState('');
+  const { clientes } = useClientes();
+  const [clienteId, setClienteId] = useState('');
+  const [clienteLibre, setClienteLibre] = useState('');
   const [items, setItems] = useState<ItemPresupuesto[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  const nombreCliente = useMemo(() => {
+    if (clienteId === CLIENTE_OTRO) return clienteLibre.trim();
+    if (clienteId) return clientes.find((c) => c.id === clienteId)?.nombre ?? '';
+    return '';
+  }, [clienteId, clienteLibre, clientes]);
+
   const resultados = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
-    if (!termino) return [];
-    return productos.filter((p) => p.nombre.toLowerCase().includes(termino)).slice(0, 6);
+    const base = termino ? productos.filter((p) => p.nombre.toLowerCase().includes(termino)) : productos;
+    return [...base].sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [busqueda, productos]);
 
   const total = useMemo(
@@ -58,7 +70,6 @@ export function PresupuestoTab() {
       }
       return [...actuales, { id: nuevoId(), productoId, nombre, cantidad: 1, precioUnitario }];
     });
-    setBusqueda('');
   }
 
   function actualizarItem(id: string, cambios: Partial<Pick<ItemPresupuesto, 'cantidad' | 'precioUnitario'>>) {
@@ -70,7 +81,8 @@ export function PresupuestoTab() {
   }
 
   function limpiarTodo() {
-    setCliente('');
+    setClienteId('');
+    setClienteLibre('');
     setItems([]);
     setMensaje(null);
   }
@@ -78,7 +90,7 @@ export function PresupuestoTab() {
   async function handleCompartirTexto() {
     setMensaje(null);
     const resultado = await compartirTexto(
-      generarTextoPresupuesto(cliente, items, total),
+      generarTextoPresupuesto(nombreCliente, items, total),
       'Papelería André — Presupuesto',
     );
     if (resultado === 'copiado') setMensaje('Presupuesto copiado — pégalo donde quieras enviarlo.');
@@ -112,18 +124,39 @@ export function PresupuestoTab() {
 
         <div className="mt-3">
           <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
-            Cliente / referencia (opcional)
+            Cliente (opcional)
           </label>
-          <input
-            type="text"
-            value={cliente}
-            onChange={(e) => setCliente(e.target.value)}
-            placeholder="Ej. Lista de 3er grado — familia Pérez"
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"
-          />
+          <select
+            value={clienteId}
+            onChange={(e) => {
+              setClienteId(e.target.value);
+              if (e.target.value !== CLIENTE_OTRO) setClienteLibre('');
+            }}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          >
+            <option value="">Sin cliente</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+            <option value={CLIENTE_OTRO}>+ Otro / nuevo…</option>
+          </select>
+          {clienteId === CLIENTE_OTRO && (
+            <input
+              type="text"
+              value={clienteLibre}
+              onChange={(e) => setClienteLibre(e.target.value)}
+              placeholder="Ej. Lista de 3er grado — familia Pérez"
+              className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"
+            />
+          )}
+          <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+            "Otro / nuevo" es solo para el nombre en el presupuesto — no crea un cliente en tu directorio.
+          </p>
         </div>
 
-        <div className="relative mt-3">
+        <div className="mt-3">
           <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
             Buscar producto en tu inventario
           </label>
@@ -131,32 +164,38 @@ export function PresupuestoTab() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Ej. Cuaderno profesional"
+            placeholder="Ej. Cuaderno profesional (o deja vacío para ver todos)"
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-900"
           />
 
-          {busqueda.trim() && (
-            <div className="mt-1 space-y-1 rounded-lg border border-gray-200 bg-white p-1.5 dark:border-gray-800 dark:bg-gray-900">
-              {resultados.length === 0 ? (
-                <p className="px-2 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  No se encontraron productos con ese nombre en tu inventario.
-                </p>
-              ) : (
-                resultados.map((producto) => (
-                  <button
-                    key={producto.id}
-                    onClick={() => agregarDesdeProducto(producto.id, producto.nombre, producto.precioVenta)}
-                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <span className="truncate text-gray-700 dark:text-gray-300">{producto.nombre}</span>
-                    <span className="shrink-0 font-medium text-gray-900 dark:text-gray-50">
-                      ${producto.precioVenta.toFixed(2)}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
+          <p className="mb-1 mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+            {busqueda.trim() ? `Resultados (${resultados.length})` : `Todos los productos (${resultados.length})`}
+          </p>
+          <div className="grid max-h-64 grid-cols-1 items-start gap-1 overflow-y-auto rounded-lg border border-gray-200 p-1.5 dark:border-gray-800 md:grid-cols-2">
+            {resultados.length === 0 ? (
+              <p className="col-span-full px-2 py-3 text-center text-xs text-gray-500 dark:text-gray-400">
+                {productos.length === 0
+                  ? 'Aún no hay productos en tu inventario.'
+                  : 'No se encontraron productos con ese nombre.'}
+              </p>
+            ) : (
+              resultados.map((producto) => (
+                <button
+                  key={producto.id}
+                  onClick={() => agregarDesdeProducto(producto.id, producto.nombre, producto.precioVenta)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <span className="shrink-0 text-base">{emojiDeCategoria(producto.categoria)}</span>
+                  <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-300">
+                    {producto.nombre}
+                  </span>
+                  <span className="shrink-0 font-medium text-gray-900 dark:text-gray-50">
+                    ${producto.precioVenta.toFixed(2)}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -212,11 +251,11 @@ export function PresupuestoTab() {
           >
             <p className="text-center text-sm font-bold text-gray-900">Papelería André</p>
             <p className="text-center text-xs text-gray-500">Presupuesto</p>
-            {cliente.trim() && <p className="mt-1 text-center text-xs text-gray-600">Para: {cliente.trim()}</p>}
-            <div className="mt-3 space-y-1 border-t border-dashed border-gray-300 pt-2 text-xs text-gray-700">
+            {nombreCliente && <p className="mt-1 text-center text-xs text-gray-600">Para: {nombreCliente}</p>}
+            <div className="mt-3 space-y-1.5 border-t border-dashed border-gray-300 pt-2 text-xs text-gray-700">
               {items.map((item) => (
-                <div key={item.id} className="flex justify-between gap-2">
-                  <span className="truncate">
+                <div key={item.id} className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 flex-1 break-words">
                     {item.cantidad} x {item.nombre}
                   </span>
                   <span className="shrink-0">${(item.cantidad * item.precioUnitario).toFixed(2)}</span>

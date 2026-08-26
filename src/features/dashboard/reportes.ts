@@ -90,16 +90,17 @@ export function generarPdfCorte(ventas: Venta[], desde: Date, hasta: Date): jsPD
   doc.setFont('helvetica', 'normal');
 
   for (const venta of ventas) {
-    saltoDePaginaSiNecesario();
     const itemsTexto = venta.items.map((item) => `${item.cantidad}x ${item.nombre}`).join(', ');
     const itemsRecortado = doc.splitTextToSize(itemsTexto, anchoUtil - (colX.items - margen));
+    const altoFila = Math.max(5, (Array.isArray(itemsRecortado) ? itemsRecortado.length : 1) * 4);
+    saltoDePaginaSiNecesario(altoFila);
     doc.setFontSize(8.5);
     doc.text(format(venta.fecha, 'dd/MM/yy'), colX.fecha, y);
     doc.text(format(venta.fecha, 'HH:mm'), colX.hora, y);
     doc.text(ETIQUETA_METODO[venta.metodoPago] ?? venta.metodoPago, colX.metodo, y);
     doc.text(`${venta.anulada ? '(anulada) ' : ''}$${venta.total.toFixed(2)}`, colX.total, y);
     doc.text(itemsRecortado, colX.items, y);
-    y += Math.max(5, (Array.isArray(itemsRecortado) ? itemsRecortado.length : 1) * 4);
+    y += altoFila;
   }
 
   return doc;

@@ -46,10 +46,10 @@ export function MovimientosStockTab() {
         ))}
       </div>
 
-      <div className="mt-4 space-y-2">
-        {cargando && <p className="text-sm text-gray-500 dark:text-gray-400">Cargando…</p>}
+      <div className="mt-4 grid grid-cols-1 items-start gap-2 md:grid-cols-2">
+        {cargando && <p className="col-span-full text-sm text-gray-500 dark:text-gray-400">Cargando…</p>}
         {!cargando && movimientosFiltrados.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No hay movimientos registrados.</p>
+          <p className="col-span-full text-sm text-gray-500 dark:text-gray-400">No hay movimientos registrados.</p>
         )}
 
         {movimientosFiltrados.map((mov) => {

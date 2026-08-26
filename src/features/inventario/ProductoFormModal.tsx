@@ -5,6 +5,7 @@ import { useProductos } from '../../application/inventario/useProductos';
 import { container } from '../../infrastructure/container';
 import { eliminarImagenProducto, subirImagenProducto } from '../../infrastructure/firebase/storage';
 import { BarcodeScanner } from '../../shared/components/BarcodeScanner';
+import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
 
 interface ProductoFormModalProps {
   producto?: Producto | null;
@@ -163,7 +164,9 @@ export function ProductoFormModal({
               {imagenPreview ? (
                 <img src={imagenPreview} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-2xl">📦</span>
+                <span className="text-2xl">
+                  {emojiDeCategoria(categoria === CATEGORIA_NUEVA ? categoriaNueva : categoria)}
+                </span>
               )}
             </div>
             <label className="flex-1 cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-2 text-center text-xs text-gray-500 hover:border-brand-400 dark:border-gray-700 dark:text-gray-400">
@@ -203,6 +206,7 @@ export function ProductoFormModal({
                 type="button"
                 onClick={() => setMostrarScanner(true)}
                 className="shrink-0 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700 dark:text-gray-200"
+                title="Escanear código"
                 aria-label="Escanear código"
               >
                 📷
@@ -223,7 +227,7 @@ export function ProductoFormModal({
               </option>
               {categorias.map((cat) => (
                 <option key={cat.id} value={cat.nombre}>
-                  {cat.nombre}
+                  {emojiDeCategoria(cat.nombre)} {cat.nombre}
                 </option>
               ))}
               <option value={CATEGORIA_NUEVA}>+ Nueva categoría…</option>

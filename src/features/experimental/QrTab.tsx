@@ -172,7 +172,8 @@ export function QrTab() {
         <>
           <div
             ref={previewRef}
-            className="mx-auto flex max-w-xs flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800"
+            className="mx-auto flex max-w-xs flex-col items-center gap-2 rounded-xl border border-gray-200 p-4 dark:border-gray-800"
+            style={{ backgroundColor: '#ffffff' }}
           >
             <img src={dataUrl} alt="Código QR" className="h-48 w-48" />
             {etiqueta.trim() && <p className="text-center text-sm font-medium text-gray-800">{etiqueta.trim()}</p>}

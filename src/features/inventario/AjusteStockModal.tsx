@@ -25,6 +25,7 @@ export function AjusteStockModal({ producto, onCerrar, onGuardado }: AjusteStock
       ? producto.stock + cantidadNum
       : producto.stock - cantidadNum
     : producto.stock;
+  const stockInsuficiente = tipo === 'salida' && stockResultante < 0;
 
   async function handleSubmit(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -32,6 +33,10 @@ export function AjusteStockModal({ producto, onCerrar, onGuardado }: AjusteStock
 
     if (!Number.isFinite(cantidadNum) || cantidadNum <= 0) {
       setError('Ingresa una cantidad válida.');
+      return;
+    }
+    if (stockInsuficiente) {
+      setError(`No hay suficiente stock. Disponible: ${producto.stock}.`);
       return;
     }
 
@@ -126,8 +131,13 @@ export function AjusteStockModal({ producto, onCerrar, onGuardado }: AjusteStock
             </datalist>
           </div>
 
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p
+            className={`text-sm ${
+              stockInsuficiente ? 'font-medium text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'
+            }`}
+          >
             Stock resultante: <span className="font-semibold">{stockResultante}</span>
+            {stockInsuficiente && ' — no hay suficiente stock ⚠️'}
           </p>
 
           {error && (
@@ -138,7 +148,7 @@ export function AjusteStockModal({ producto, onCerrar, onGuardado }: AjusteStock
 
           <button
             type="submit"
-            disabled={guardando}
+            disabled={guardando || stockInsuficiente}
             className="w-full rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
             {guardando ? 'Guardando…' : 'Registrar movimiento'}

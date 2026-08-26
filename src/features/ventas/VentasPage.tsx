@@ -9,6 +9,7 @@ import { ConfirmarCobroModal, type DatosCobro } from './ConfirmarCobroModal';
 import { TicketVentaModal } from './TicketVentaModal';
 import type { DetalleTicket } from './ticket';
 import { HistorialVentas } from './HistorialVentas';
+import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
 
 type Pestana = 'vender' | 'historial';
 
@@ -175,8 +176,8 @@ export function VentasPage() {
           <HistorialVentas />
         </div>
       ) : (
-        <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex flex-1 flex-col md:flex-row md:overflow-hidden">
+          <div className="p-4 md:flex-1 md:overflow-y-auto md:p-6">
             <div className="flex gap-2">
               <input
                 ref={inputBusquedaRef}
@@ -217,9 +218,12 @@ export function VentasPage() {
                   key={producto.id}
                   onClick={() => carrito.agregarProducto(producto)}
                   disabled={producto.stock === 0}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-brand-300 disabled:opacity-50 dark:border-gray-800 dark:bg-gray-900"
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-brand-300 disabled:opacity-50 dark:border-gray-800 dark:bg-gray-900"
                 >
-                  <div className="min-w-0">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-lg dark:bg-gray-800">
+                    {emojiDeCategoria(producto.categoria)}
+                  </span>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-50">
                       {producto.nombre}
                     </p>
@@ -313,6 +317,11 @@ export function VentasPage() {
             >
               Cobrar
             </button>
+            {carrito.items.length > 0 && (
+              <p className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
+                💡 Tip: con el carrito lleno, presiona Enter (sin estar escribiendo en un campo) para cobrar rápido.
+              </p>
+            )}
           </div>
         </div>
       )}

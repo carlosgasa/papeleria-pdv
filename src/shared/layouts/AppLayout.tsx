@@ -37,7 +37,7 @@ export function AppLayout() {
       <EstadoConexionBanner />
       <PastelBunting />
 
-      <div className="flex flex-1 flex-col md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <aside className="hidden w-56 shrink-0 border-r border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:flex md:flex-col">
           <div className="mb-6 flex items-center gap-2 px-1">
             <span className="text-xl">📎</span>
@@ -94,7 +94,7 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        <main className="min-h-0 flex-1 overflow-y-auto pb-16 md:pb-0">
           <Outlet />
         </main>
 

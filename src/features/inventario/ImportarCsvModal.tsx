@@ -1,10 +1,15 @@
 import { useState } from 'react';
+import clsx from 'clsx';
 import { useProductos } from '../../application/inventario/useProductos';
 import { useCategorias } from '../../application/inventario/useCategorias';
 import { container } from '../../infrastructure/container';
 import { descargarArchivo } from '../../shared/utils/descargarArchivo';
-import { interpretarProductosCsv, plantillaProductosCsv, type FilaImportacion } from './csv';
-import type { OperacionLoteProducto } from '../../domain/repositories/ProductoRepository';
+import {
+  interpretarProductosCsv,
+  planificarImportacion,
+  plantillaProductosCsv,
+  type PlanImportacion,
+} from './csv';
 
 interface ImportarCsvModalProps {
   onCerrar: () => void;
@@ -17,89 +22,86 @@ interface ResultadoImportacion {
   errores: string[];
 }
 
+const ESTILO_BADGE: Record<string, string> = {
+  nueva: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+  actualiza: 'bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300',
+  error: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400',
+};
+
+const ETIQUETA_BADGE: Record<string, string> = {
+  nueva: 'Nuevo',
+  actualiza: 'Actualiza',
+  error: 'Atención',
+};
+
 export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
   const { productos } = useProductos();
   const { categorias, crearCategoria } = useCategorias();
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [plan, setPlan] = useState<PlanImportacion | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null);
 
-  async function handleImportar() {
-    if (!archivo) return;
-    setProcesando(true);
+  async function handleArchivoSeleccionado(nuevoArchivo: File | null) {
+    setArchivo(nuevoArchivo);
     setResultado(null);
+    setPlan(null);
+    if (!nuevoArchivo) return;
 
-    const texto = await archivo.text();
-    const filas = interpretarProductosCsv(texto);
-    const errores: string[] = filas
-      .filter((f): f is FilaImportacion & { error: string } => Boolean(f.error))
-      .map((f) => `Fila ${f.numero}: ${f.error}`);
-    const validas = filas.filter((f) => f.datos);
+    setAnalizando(true);
+    try {
+      const texto = await nuevoArchivo.text();
+      const filas = interpretarProductosCsv(texto);
+      const nombresCategoriasExistentes = new Set(categorias.map((c) => c.nombre.toLowerCase()));
+      setPlan(planificarImportacion(filas, productos, nombresCategoriasExistentes));
+    } finally {
+      setAnalizando(false);
+    }
+  }
+
+  async function handleConfirmar() {
+    if (!plan) return;
+    setProcesando(true);
 
     try {
-      // Crea primero las categorías que aún no existen, para no dejar productos
-      // con una categoría "huérfana" que no aparece en los selects de la app.
-      const categoriasExistentes = new Set(categorias.map((c) => c.nombre.toLowerCase()));
-      const categoriasNuevasSet = new Set<string>();
-      for (const fila of validas) {
-        const nombreCategoria = fila.datos!.categoria;
-        if (!categoriasExistentes.has(nombreCategoria.toLowerCase())) {
-          categoriasNuevasSet.add(nombreCategoria);
-        }
-      }
-      for (const nombreCategoria of categoriasNuevasSet) {
+      for (const nombreCategoria of plan.categoriasNuevas) {
         await crearCategoria(nombreCategoria);
       }
-
-      // Empareja por código de barras contra los productos ya cargados en memoria
-      // (evita una consulta a Firestore por fila y reduce la ventana de condición
-      // de carrera si dos importaciones corrieran al mismo tiempo).
-      const productosPorCodigo = new Map(
-        productos.filter((p) => p.codigoBarras).map((p) => [p.codigoBarras as string, p]),
-      );
-
-      const operaciones: OperacionLoteProducto[] = [];
-      const codigosNuevosEnArchivo = new Set<string>();
-      let creados = 0;
-      let actualizados = 0;
-      for (const fila of validas) {
-        const datos = fila.datos!;
-        const existente = datos.codigoBarras ? productosPorCodigo.get(datos.codigoBarras) : undefined;
-        if (existente) {
-          operaciones.push({ id: existente.id, datos });
-          actualizados++;
-        } else if (datos.codigoBarras && codigosNuevosEnArchivo.has(datos.codigoBarras)) {
-          errores.push(
-            `Fila ${fila.numero}: código de barras "${datos.codigoBarras}" repetido en el archivo, se omitió esta fila.`,
-          );
-        } else {
-          if (datos.codigoBarras) codigosNuevosEnArchivo.add(datos.codigoBarras);
-          operaciones.push({ id: null, datos });
-          creados++;
-        }
+      if (plan.operaciones.length > 0) {
+        await container.productoRepository.guardarLote(plan.operaciones);
       }
 
-      if (operaciones.length > 0) {
-        await container.productoRepository.guardarLote(operaciones);
-      }
-
-      setResultado({ creados, actualizados, categoriasNuevas: categoriasNuevasSet.size, errores });
+      setResultado({
+        creados: plan.filas.filter((f) => f.estado === 'nueva').length,
+        actualizados: plan.filas.filter((f) => f.estado === 'actualiza').length,
+        categoriasNuevas: plan.categoriasNuevas.length,
+        errores: plan.filas
+          .filter((f) => f.estado === 'error')
+          .map((f) => `Fila ${f.numero}: ${f.detalle}`),
+      });
+      setPlan(null);
+      setArchivo(null);
     } catch {
       setResultado({
         creados: 0,
         actualizados: 0,
         categoriasNuevas: 0,
-        errores: [...errores, 'No se pudo completar la importación. Intenta de nuevo.'],
+        errores: ['No se pudo completar la importación. Intenta de nuevo.'],
       });
     } finally {
       setProcesando(false);
     }
   }
 
+  const nuevas = plan?.filas.filter((f) => f.estado === 'nueva').length ?? 0;
+  const actualiza = plan?.filas.filter((f) => f.estado === 'actualiza').length ?? 0;
+  const conError = plan?.filas.filter((f) => f.estado === 'error').length ?? 0;
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
-      <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-xl dark:bg-gray-900 sm:rounded-2xl">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="flex max-h-[90svh] w-full max-w-sm flex-col rounded-t-2xl bg-white p-5 shadow-xl dark:bg-gray-900 sm:rounded-2xl">
+        <div className="mb-4 flex shrink-0 items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-50">Importar productos (CSV)</h2>
           <button
             onClick={onCerrar}
@@ -110,59 +112,127 @@ export function ImportarCsvModal({ onCerrar }: ImportarCsvModalProps) {
           </button>
         </div>
 
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          El archivo debe tener las columnas: nombre, codigoBarras, categoria, costo, precioVenta, stock,
-          stockMinimo (el código de barras puede ir vacío, los demás campos no). Si el código de barras ya
-          existe, el producto se actualiza; si no, se crea uno nuevo. Las categorías nuevas se crean solas.
-        </p>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            El archivo debe tener las columnas: nombre, codigoBarras, categoria, costo, precioVenta, stock,
+            stockMinimo (el código de barras puede ir vacío, los demás campos no). Si el código de barras ya
+            existe, el producto se actualiza; si no, se crea uno nuevo. Las categorías nuevas se crean solas.
+          </p>
 
-        <button
-          type="button"
-          onClick={() => descargarArchivo('plantilla-productos.csv', plantillaProductosCsv(), 'text/csv;charset=utf-8')}
-          className="mt-2 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
-        >
-          📋 Descargar plantilla vacía
-        </button>
+          <button
+            type="button"
+            onClick={() => descargarArchivo('plantilla-productos.csv', plantillaProductosCsv(), 'text/csv;charset=utf-8')}
+            className="mt-2 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+          >
+            📋 Descargar plantilla vacía
+          </button>
 
-        <label className="mt-3 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center text-sm text-gray-500 hover:border-brand-400 dark:border-gray-700 dark:text-gray-400">
-          {archivo ? archivo.name : 'Selecciona un archivo .csv'}
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => {
-              setArchivo(e.target.files?.[0] ?? null);
-              setResultado(null);
-            }}
-          />
-        </label>
+          <label className="mt-3 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center text-sm text-gray-500 hover:border-brand-400 dark:border-gray-700 dark:text-gray-400">
+            {archivo ? archivo.name : 'Selecciona un archivo .csv'}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => void handleArchivoSeleccionado(e.target.files?.[0] ?? null)}
+            />
+          </label>
 
-        {procesando && (
-          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Importando…</p>
-        )}
+          {analizando && (
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Analizando archivo…</p>
+          )}
 
-        {resultado && (
-          <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-            <p className="text-gray-700 dark:text-gray-200">
-              ✅ {resultado.creados} creados · {resultado.actualizados} actualizados
-              {resultado.categoriasNuevas > 0 && ` · ${resultado.categoriasNuevas} categorías nuevas`}
-            </p>
-            {resultado.errores.length > 0 && (
-              <div className="mt-1 max-h-32 overflow-y-auto text-xs text-red-600 dark:text-red-400">
-                {resultado.errores.map((err, i) => (
-                  <p key={i}>{err}</p>
+          {plan && !analizando && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                Vista previa — {plan.filas.length} fila{plan.filas.length === 1 ? '' : 's'}:{' '}
+                <span className="text-emerald-600 dark:text-emerald-400">{nuevas} nuevas</span> ·{' '}
+                <span className="text-brand-600 dark:text-brand-400">{actualiza} actualizan</span>
+                {conError > 0 && (
+                  <>
+                    {' '}
+                    · <span className="text-red-600 dark:text-red-400">{conError} necesitan atención</span>
+                  </>
+                )}
+                {plan.categoriasNuevas.length > 0 && (
+                  <> · {plan.categoriasNuevas.length} categoría{plan.categoriasNuevas.length === 1 ? '' : 's'} nueva{plan.categoriasNuevas.length === 1 ? '' : 's'}</>
+                )}
+              </p>
+
+              <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-800">
+                {plan.filas.map((fila) => (
+                  <div
+                    key={fila.numero}
+                    className={clsx(
+                      'rounded-lg border p-2 text-xs',
+                      fila.estado === 'error'
+                        ? 'border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/40'
+                        : 'border-gray-200 dark:border-gray-800',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate font-medium text-gray-900 dark:text-gray-100">
+                        Fila {fila.numero}
+                        {fila.nombre ? ` · ${fila.nombre}` : ''}
+                      </span>
+                      <span
+                        className={clsx(
+                          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                          ESTILO_BADGE[fila.estado],
+                        )}
+                      >
+                        {ETIQUETA_BADGE[fila.estado]}
+                      </span>
+                    </div>
+                    <p
+                      className={clsx(
+                        'mt-0.5',
+                        fila.estado === 'error'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-gray-500 dark:text-gray-400',
+                      )}
+                    >
+                      {fila.detalle}
+                    </p>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+
+              {conError > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  ⚠️ Las filas marcadas "Atención" no se importarán. Corrígelas en tu archivo y vuelve a
+                  seleccionarlo si quieres incluirlas.
+                </p>
+              )}
+            </div>
+          )}
+
+          {resultado && (
+            <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+              <p className="text-gray-700 dark:text-gray-200">
+                ✅ {resultado.creados} creados · {resultado.actualizados} actualizados
+                {resultado.categoriasNuevas > 0 && ` · ${resultado.categoriasNuevas} categorías nuevas`}
+              </p>
+              {resultado.errores.length > 0 && (
+                <div className="mt-1 max-h-32 overflow-y-auto text-xs text-red-600 dark:text-red-400">
+                  {resultado.errores.map((err, i) => (
+                    <p key={i}>{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <button
-          onClick={() => void handleImportar()}
-          disabled={!archivo || procesando}
-          className="mt-4 w-full rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
+          onClick={() => void handleConfirmar()}
+          disabled={!plan || plan.operaciones.length === 0 || procesando || analizando}
+          className="mt-4 w-full shrink-0 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
         >
-          {procesando ? 'Importando…' : 'Importar'}
+          {procesando
+            ? 'Importando…'
+            : plan
+              ? `Confirmar importación (${plan.operaciones.length})`
+              : 'Importar'}
         </button>
       </div>
     </div>

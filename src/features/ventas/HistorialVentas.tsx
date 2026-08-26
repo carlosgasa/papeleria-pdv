@@ -36,7 +36,7 @@ export function HistorialVentas() {
   }
 
   return (
-    <div className="space-y-2 p-4 md:p-6">
+    <div className="grid grid-cols-1 items-start gap-2 p-4 md:grid-cols-2 md:p-6">
       {ventas.map((venta) => (
         <div
           key={venta.id}
