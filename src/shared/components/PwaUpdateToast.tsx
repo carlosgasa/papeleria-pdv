@@ -1,7 +1,18 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+// Si se deja la app abierta todo el día (uso típico de un POS), el navegador
+// solo revisa si hay una versión nueva al registrar el service worker — no
+// solo. Con esta revisión periódica, un despliegue nuevo se detecta y avisa
+// aunque nadie recargue la pestaña.
+const INTERVALO_REVISION_MS = 60 * 60 * 1000;
+
 export function PwaUpdateToast() {
-  const { needRefresh, offlineReady, updateServiceWorker } = useRegisterSW();
+  const { needRefresh, offlineReady, updateServiceWorker } = useRegisterSW({
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+      setInterval(() => void registration.update(), INTERVALO_REVISION_MS);
+    },
+  });
 
   const [needsUpdate, setNeedsUpdate] = needRefresh;
   const [isOfflineReady, setOfflineReady] = offlineReady;
