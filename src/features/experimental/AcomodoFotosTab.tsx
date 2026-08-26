@@ -2,8 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PLANTILLAS_FOTO, TAMANOS_HOJA } from './plantillas';
-import { cargarImagen, recortarParaLlenar } from './imageUtils';
+import {
+  AJUSTE_RECORTE_DEFECTO,
+  cargarImagen,
+  estiloRecorte,
+  recortarConAjuste,
+  type AjusteRecorte,
+} from './imageUtils';
 import { imprimirPaginas } from './imprimir';
+import { AjustarRecorteModal } from './AjustarRecorteModal';
 
 interface EntradaFoto {
   id: string;
@@ -11,6 +18,7 @@ interface EntradaFoto {
   img: HTMLImageElement;
   previewUrl: string;
   copias: number;
+  ajuste: AjusteRecorte;
 }
 
 const DPI_EXPORTACION = 300;
@@ -28,6 +36,7 @@ export function AcomodoFotosTab() {
   const [espacioCm, setEspacioCm] = useState(0.2);
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [entradaEditandoId, setEntradaEditandoId] = useState<string | null>(null);
   const paginaRefs = useRef<(HTMLDivElement | null)[]>([]);
   const entradasRef = useRef<EntradaFoto[]>(entradas);
   entradasRef.current = entradas;
@@ -47,6 +56,7 @@ export function AcomodoFotosTab() {
   }, [plantillaId, anchoPersonalizado, altoPersonalizado]);
 
   const hoja = useMemo(() => TAMANOS_HOJA.find((h) => h.id === hojaId) ?? TAMANOS_HOJA[0], [hojaId]);
+  const celdaAspecto = useMemo(() => plantilla.anchoCm / plantilla.altoCm, [plantilla]);
 
   const { columnas, filas, slotsPorHoja } = useMemo(() => {
     const areaAncho = hoja.anchoCm - 2 * margenCm;
@@ -81,6 +91,7 @@ export function AcomodoFotosTab() {
           img,
           previewUrl: img.src,
           copias: COPIAS_INICIALES,
+          ajuste: AJUSTE_RECORTE_DEFECTO,
         } satisfies EntradaFoto;
       }),
     );
@@ -107,6 +118,11 @@ export function AcomodoFotosTab() {
     );
   }
 
+  function actualizarAjuste(id: string, ajuste: AjusteRecorte) {
+    setEntradas((actuales) => actuales.map((e) => (e.id === id ? { ...e, ajuste } : e)));
+    setEntradaEditandoId(null);
+  }
+
   async function exportarPdf() {
     if (paginas.length === 0) return;
     setExportando(true);
@@ -123,7 +139,7 @@ export function AcomodoFotosTab() {
           const fila = Math.floor(indiceSlot / columnas);
           const x = margenCm + col * (plantilla.anchoCm + espacioCm);
           const y = margenCm + fila * (plantilla.altoCm + espacioCm);
-          const dataUrl = recortarParaLlenar(entrada.img, anchoPx, altoPx);
+          const dataUrl = recortarConAjuste(entrada.img, anchoPx, altoPx, entrada.ajuste);
           pdf.addImage(dataUrl, 'JPEG', x, y, plantilla.anchoCm, plantilla.altoCm);
         });
       });
@@ -195,6 +211,10 @@ export function AcomodoFotosTab() {
 
         {entradas.length > 0 && (
           <div className="mt-3 space-y-2">
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">
+              ✏️ Ajusta el zoom y encuadre de cada foto — el recorte siempre respeta la proporción del tamaño
+              elegido abajo.
+            </p>
             {entradas.map((entrada) => (
               <div key={entrada.id} className="flex items-center gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-800">
                 <img src={entrada.previewUrl} alt="" className="h-10 w-10 rounded-md object-cover" />
@@ -214,6 +234,14 @@ export function AcomodoFotosTab() {
                     +
                   </button>
                 </div>
+                <button
+                  onClick={() => setEntradaEditandoId(entrada.id)}
+                  className="shrink-0 rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
+                  title="Ajustar encuadre"
+                  aria-label="Ajustar encuadre"
+                >
+                  ✏️
+                </button>
                 <button onClick={() => quitarEntrada(entrada.id)} className="text-gray-400 hover:text-red-500" aria-label="Quitar">
                   ✕
                 </button>
@@ -373,18 +401,40 @@ export function AcomodoFotosTab() {
                 }}
               >
                 {pagina.map((entrada, indiceSlot) => (
-                  <img
-                    key={`${entrada.id}-${indiceSlot}`}
-                    src={entrada.previewUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  <div key={`${entrada.id}-${indiceSlot}`} className="relative h-full w-full overflow-hidden">
+                    <img
+                      src={entrada.previewUrl}
+                      alt=""
+                      className="absolute"
+                      style={{
+                        ...estiloRecorte(entrada.img, celdaAspecto, entrada.ajuste),
+                        maxWidth: 'none',
+                        maxHeight: 'none',
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {entradaEditandoId &&
+        (() => {
+          const entrada = entradas.find((e) => e.id === entradaEditandoId);
+          if (!entrada) return null;
+          return (
+            <AjustarRecorteModal
+              previewUrl={entrada.previewUrl}
+              img={entrada.img}
+              celdaAspecto={celdaAspecto}
+              ajusteInicial={entrada.ajuste}
+              onGuardar={(ajuste) => actualizarAjuste(entrada.id, ajuste)}
+              onCerrar={() => setEntradaEditandoId(null)}
+            />
+          );
+        })()}
     </div>
   );
 }
