@@ -28,19 +28,29 @@ export function AjustarRecorteModal({
   const estilo = estiloRecorte(img, celdaAspecto, ajuste);
 
   function handlePointerDown(evento: ReactPointerEvent<HTMLDivElement>) {
-    (evento.target as HTMLElement).setPointerCapture(evento.pointerId);
+    try {
+      (evento.target as HTMLElement).setPointerCapture(evento.pointerId);
+    } catch {
+      // Algunos navegadores móviles pueden rechazar la captura de puntero;
+      // el arrastre sigue funcionando igual sin ella.
+    }
     arrastreRef.current = { x: evento.clientX, y: evento.clientY, posX: ajuste.posX, posY: ajuste.posY };
   }
 
   function handlePointerMove(evento: ReactPointerEvent<HTMLDivElement>) {
     if (!arrastreRef.current || !contenedorRef.current) return;
     const rect = contenedorRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const deltaXPct = ((evento.clientX - arrastreRef.current.x) / rect.width) * 100;
     const deltaYPct = ((evento.clientY - arrastreRef.current.y) / rect.height) * 100;
 
     setAjuste((actual) => {
-      const excesoAncho = Number(estilo.width.replace('%', '')) - 100;
-      const excesoAlto = Number(estilo.height.replace('%', '')) - 100;
+      // Recalculado a partir del zoom más reciente (no del `estilo` cerrado en el
+      // render que arrancó el arrastre), para que un cambio de zoom justo antes
+      // de arrastrar no deje el cálculo de exceso desfasado.
+      const estiloActual = estiloRecorte(img, celdaAspecto, actual);
+      const excesoAncho = Number(estiloActual.width.replace('%', '')) - 100;
+      const excesoAlto = Number(estiloActual.height.replace('%', '')) - 100;
       const nuevoPosX =
         excesoAncho > 0 ? arrastreRef.current!.posX - deltaXPct / excesoAncho : actual.posX;
       const nuevoPosY =
