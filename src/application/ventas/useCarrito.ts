@@ -63,7 +63,17 @@ export function useCarrito() {
     setError(null);
   }
 
+  /**
+   * Reemplaza el carrito completo (usado al retomar una nota guardada). No
+   * valida stock contra el inventario actual: si algo cambió desde que se
+   * guardó la nota, el cobro lo detecta y avisa igual que en cualquier venta.
+   */
+  function cargar(nuevosItems: ItemVenta[]) {
+    setError(null);
+    setItems(nuevosItems);
+  }
+
   const total = useMemo(() => calcularSubtotal(items), [items]);
 
-  return { items, total, error, agregarProducto, cambiarCantidad, quitar, limpiar };
+  return { items, total, error, agregarProducto, cambiarCantidad, quitar, limpiar, cargar };
 }

@@ -1,8 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useProductos } from '../../application/inventario/useProductos';
 import { useClientes } from '../../application/clientes/useClientes';
 import { compartirImagenDeElemento, compartirTexto } from '../../shared/utils/compartir';
 import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
+import { useBorradores, type BorradorBase } from '../../shared/hooks/useBorradores';
+import { GuardarNotaModal } from '../../shared/components/GuardarNotaModal';
+import { NotasGuardadasModal } from '../../shared/components/NotasGuardadasModal';
 
 interface ItemPresupuesto {
   id: string;
@@ -11,6 +16,14 @@ interface ItemPresupuesto {
   cantidad: number;
   precioUnitario: number;
 }
+
+interface BorradorPresupuesto extends BorradorBase {
+  clienteId: string;
+  clienteLibre: string;
+  items: ItemPresupuesto[];
+}
+
+const CLAVE_BORRADORES_PRESUPUESTO = 'papeleria-pos:borradores-presupuesto';
 
 const CLIENTE_OTRO = '__otro__';
 
@@ -41,7 +54,12 @@ export function PresupuestoTab() {
   const [busqueda, setBusqueda] = useState('');
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
+  const [mostrarGuardarNota, setMostrarGuardarNota] = useState(false);
+  const [mostrarNotas, setMostrarNotas] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  const { borradores: notas, guardar: guardarNotaPresupuesto, eliminar: eliminarNota } =
+    useBorradores<BorradorPresupuesto>(CLAVE_BORRADORES_PRESUPUESTO);
 
   const nombreCliente = useMemo(() => {
     if (clienteId === CLIENTE_OTRO) return clienteLibre.trim();
@@ -87,6 +105,21 @@ export function PresupuestoTab() {
     setMensaje(null);
   }
 
+  function handleGuardarNota(nombre: string) {
+    guardarNotaPresupuesto(nombre, { clienteId, clienteLibre, items });
+    limpiarTodo();
+    setMostrarGuardarNota(false);
+  }
+
+  function handleRetomarNota(nota: BorradorPresupuesto) {
+    if (items.length > 0 && !confirm('Esto reemplazará el presupuesto actual. ¿Continuar?')) return;
+    setClienteId(nota.clienteId);
+    setClienteLibre(nota.clienteLibre);
+    setItems(nota.items);
+    setMensaje(null);
+    setMostrarNotas(false);
+  }
+
   async function handleCompartirTexto() {
     setMensaje(null);
     const resultado = await compartirTexto(
@@ -117,10 +150,19 @@ export function PresupuestoTab() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Arma una cotización rápida para un cliente (ej. lista de útiles) usando solo productos de tu
-          inventario. No descuenta stock ni se guarda — es solo para calcular y compartir un estimado.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Arma una cotización rápida para un cliente (ej. lista de útiles) usando solo productos de tu
+            inventario. No descuenta stock ni se guarda — es solo para calcular y compartir un estimado.
+          </p>
+          <button
+            onClick={() => setMostrarNotas(true)}
+            className="shrink-0 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:border-gray-700 dark:text-gray-300"
+            title="Notas guardadas"
+          >
+            🗒️ Notas{notas.length > 0 ? ` (${notas.length})` : ''}
+          </button>
+        </div>
 
         <div className="mt-3">
           <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -201,11 +243,19 @@ export function PresupuestoTab() {
 
       {items.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Lista</h2>
-            <button onClick={limpiarTodo} className="text-xs font-medium text-red-600 hover:underline dark:text-red-400">
-              Limpiar todo
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMostrarGuardarNota(true)}
+                className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                🗒️ Guardar nota
+              </button>
+              <button onClick={limpiarTodo} className="text-xs font-medium text-red-600 hover:underline dark:text-red-400">
+                Limpiar todo
+              </button>
+            </div>
           </div>
 
           <ul className="mt-3 space-y-2">
@@ -291,6 +341,30 @@ export function PresupuestoTab() {
             </button>
           </div>
         </>
+      )}
+
+      {mostrarGuardarNota && (
+        <GuardarNotaModal
+          titulo="Guardar presupuesto como nota"
+          sugerido={nombreCliente || `Presupuesto ${format(Date.now(), 'd MMM, HH:mm', { locale: es })}`}
+          onGuardar={handleGuardarNota}
+          onCerrar={() => setMostrarGuardarNota(false)}
+        />
+      )}
+
+      {mostrarNotas && (
+        <NotasGuardadasModal
+          titulo="Notas de presupuesto guardadas"
+          borradores={notas}
+          renderResumen={(nota) => {
+            const cantidadArticulos = nota.items.reduce((acc, i) => acc + i.cantidad, 0);
+            const totalNota = nota.items.reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0);
+            return `${cantidadArticulos} artículo${cantidadArticulos === 1 ? '' : 's'} · $${totalNota.toFixed(2)}`;
+          }}
+          onRetomar={handleRetomarNota}
+          onEliminar={eliminarNota}
+          onCerrar={() => setMostrarNotas(false)}
+        />
       )}
     </div>
   );

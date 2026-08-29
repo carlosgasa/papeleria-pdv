@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import type { Producto } from '../../domain/entities/Producto';
+import type { ItemVenta } from '../../domain/entities/Venta';
+import { calcularSubtotal } from '../../domain/entities/Venta';
 import { useAuth } from '../../application/auth/useAuth';
 import { useProductos } from '../../application/inventario/useProductos';
 import { useClientes } from '../../application/clientes/useClientes';
@@ -11,17 +15,33 @@ import { TicketVentaModal } from './TicketVentaModal';
 import type { DetalleTicket } from './ticket';
 import { HistorialVentas } from './HistorialVentas';
 import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
+import { useBorradores, type BorradorBase } from '../../shared/hooks/useBorradores';
+import { GuardarNotaModal } from '../../shared/components/GuardarNotaModal';
+import { NotasGuardadasModal } from '../../shared/components/NotasGuardadasModal';
 
 type Pestana = 'vender' | 'historial';
+
+interface BorradorVenta extends BorradorBase {
+  items: ItemVenta[];
+}
+
+const CLAVE_BORRADORES_VENTA = 'papeleria-pos:borradores-venta';
 
 interface ContenidoCarritoProps {
   carrito: ReturnType<typeof useCarrito>;
   productosPorId: Map<string, Producto>;
   onCobrar: () => void;
+  onGuardarNota: () => void;
   ocultarTitulo?: boolean;
 }
 
-function ContenidoCarrito({ carrito, productosPorId, onCobrar, ocultarTitulo = false }: ContenidoCarritoProps) {
+function ContenidoCarrito({
+  carrito,
+  productosPorId,
+  onCobrar,
+  onGuardarNota,
+  ocultarTitulo = false,
+}: ContenidoCarritoProps) {
   return (
     <>
       {!ocultarTitulo && <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Carrito</h2>}
@@ -90,13 +110,23 @@ function ContenidoCarrito({ carrito, productosPorId, onCobrar, ocultarTitulo = f
         <span className="text-lg font-bold text-gray-900 dark:text-gray-50">${carrito.total.toFixed(2)}</span>
       </div>
 
-      <button
-        onClick={onCobrar}
-        disabled={carrito.items.length === 0}
-        className="mt-3 w-full rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-40"
-      >
-        Cobrar
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={onGuardarNota}
+          disabled={carrito.items.length === 0}
+          title="Guardar como nota para retomarla después"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          🗒️ Nota
+        </button>
+        <button
+          onClick={onCobrar}
+          disabled={carrito.items.length === 0}
+          className="flex-1 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-40"
+        >
+          Cobrar
+        </button>
+      </div>
       {carrito.items.length > 0 && (
         <p className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
           💡 Tip: con el carrito lleno, presiona Enter (sin estar escribiendo en un campo) para cobrar rápido.
@@ -120,7 +150,13 @@ export function VentasPage() {
   const [errorCobro, setErrorCobro] = useState<string | null>(null);
   const [avisoScanner, setAvisoScanner] = useState<string | null>(null);
   const [ventaCompletada, setVentaCompletada] = useState<DetalleTicket | null>(null);
+  const [mostrarGuardarNota, setMostrarGuardarNota] = useState(false);
+  const [mostrarNotas, setMostrarNotas] = useState(false);
+  const [notaActivaId, setNotaActivaId] = useState<string | null>(null);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
+
+  const { borradores: notas, guardar: guardarNotaVenta, eliminar: eliminarNota } =
+    useBorradores<BorradorVenta>(CLAVE_BORRADORES_VENTA);
 
   const productosPorId = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
 
@@ -170,6 +206,28 @@ export function VentasPage() {
   function abrirCobro() {
     setMostrarCarritoMovil(false);
     setMostrarCobro(true);
+  }
+
+  function abrirGuardarNota() {
+    setMostrarCarritoMovil(false);
+    setMostrarGuardarNota(true);
+  }
+
+  function handleGuardarNota(nombre: string) {
+    guardarNotaVenta(nombre, { items: carrito.items });
+    carrito.limpiar();
+    setNotaActivaId(null);
+    setMostrarGuardarNota(false);
+  }
+
+  function handleRetomarNota(nota: BorradorVenta) {
+    if (carrito.items.length > 0 && !confirm('Esto reemplazará lo que tienes ahora en el carrito. ¿Continuar?')) {
+      return;
+    }
+    carrito.cargar(nota.items);
+    setNotaActivaId(nota.id);
+    setMostrarNotas(false);
+    setMostrarCarritoMovil(false);
   }
 
   // Modo caja rápida: con el foco fuera de cualquier campo de texto, Enter abre el cobro.
@@ -233,6 +291,10 @@ export function VentasPage() {
 
       carrito.limpiar();
       setMostrarCobro(false);
+      if (notaActivaId) {
+        eliminarNota(notaActivaId);
+        setNotaActivaId(null);
+      }
     } catch (err) {
       setErrorCobro(err instanceof Error ? err.message : 'No se pudo registrar la venta.');
     } finally {
@@ -298,6 +360,13 @@ export function VentasPage() {
               >
                 📷
               </button>
+              <button
+                onClick={() => setMostrarNotas(true)}
+                className="shrink-0 rounded-lg border border-gray-300 px-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300"
+                title="Notas guardadas"
+              >
+                🗒️{notas.length > 0 ? ` ${notas.length}` : ''}
+              </button>
             </div>
 
             {avisoScanner && (
@@ -350,6 +419,7 @@ export function VentasPage() {
               carrito={carrito}
               productosPorId={productosPorId}
               onCobrar={abrirCobro}
+              onGuardarNota={abrirGuardarNota}
             />
           </div>
         </div>
@@ -388,6 +458,7 @@ export function VentasPage() {
               carrito={carrito}
               productosPorId={productosPorId}
               onCobrar={abrirCobro}
+              onGuardarNota={abrirGuardarNota}
               ocultarTitulo
             />
           </div>
@@ -414,6 +485,29 @@ export function VentasPage() {
 
       {ventaCompletada && (
         <TicketVentaModal detalle={ventaCompletada} onCerrar={() => setVentaCompletada(null)} />
+      )}
+
+      {mostrarGuardarNota && (
+        <GuardarNotaModal
+          titulo="Guardar venta como nota"
+          sugerido={`Venta ${format(Date.now(), 'd MMM, HH:mm', { locale: es })}`}
+          onGuardar={handleGuardarNota}
+          onCerrar={() => setMostrarGuardarNota(false)}
+        />
+      )}
+
+      {mostrarNotas && (
+        <NotasGuardadasModal
+          titulo="Notas de venta guardadas"
+          borradores={notas}
+          renderResumen={(nota) => {
+            const cantidadArticulos = nota.items.reduce((acc, i) => acc + i.cantidad, 0);
+            return `${cantidadArticulos} artículo${cantidadArticulos === 1 ? '' : 's'} · $${calcularSubtotal(nota.items).toFixed(2)}`;
+          }}
+          onRetomar={handleRetomarNota}
+          onEliminar={eliminarNota}
+          onCerrar={() => setMostrarNotas(false)}
+        />
       )}
     </div>
   );
