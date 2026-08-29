@@ -43,6 +43,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         navigateFallbackDenylist: [/^\/__/],
+        // Sin esto, al confirmar "Actualizar" el nuevo service worker se activa en
+        // segundo plano pero no toma el control de la pestaña ya abierta (solo de
+        // las que se abran después) — el evento que dispara la recarga automática
+        // nunca llega a dispararse y el botón parece no hacer nada.
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://firestore.googleapis.com',
