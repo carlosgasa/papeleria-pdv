@@ -42,31 +42,6 @@ export function cargarImagenDesdeUrl(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Recorta y escala una imagen para llenar por completo un rectángulo destino
- * (comportamiento tipo CSS "object-fit: cover"), devolviendo un data URL JPEG.
- */
-export function recortarParaLlenar(
-  img: HTMLImageElement,
-  anchoDestinoPx: number,
-  altoDestinoPx: number,
-): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(anchoDestinoPx);
-  canvas.height = Math.round(altoDestinoPx);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('No se pudo preparar el lienzo de recorte.');
-
-  const escala = Math.max(anchoDestinoPx / img.width, altoDestinoPx / img.height);
-  const anchoRecorte = anchoDestinoPx / escala;
-  const altoRecorte = altoDestinoPx / escala;
-  const origenX = (img.width - anchoRecorte) / 2;
-  const origenY = (img.height - altoRecorte) / 2;
-
-  ctx.drawImage(img, origenX, origenY, anchoRecorte, altoRecorte, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.92);
-}
-
 export interface AjusteRecorte {
   zoom: number;
   posX: number;
@@ -76,9 +51,14 @@ export interface AjusteRecorte {
 export const AJUSTE_RECORTE_DEFECTO: AjusteRecorte = { zoom: 1, posX: 0.5, posY: 0.5 };
 
 /**
- * Igual que recortarParaLlenar, pero permite alejar/acercar (zoom ≥ 1) y elegir
- * qué parte de la imagen queda visible (posX/posY de 0 a 1, 0.5 = centrado).
- * Con zoom=1 y posX=posY=0.5 el resultado es idéntico a recortarParaLlenar.
+ * Recorta y escala una imagen dentro de un rectángulo destino, permitiendo
+ * alejar/acercar y elegir qué parte de la imagen queda visible (posX/posY de
+ * 0 a 1, 0.5 = centrado). Con zoom=1 se comporta como CSS "object-fit: cover"
+ * (llena el rectángulo por completo). Con zoom < 1 la imagen se ve completa y
+ * más chica, con margen blanco alrededor (no se puede mover en ese caso, ya
+ * que no sobra imagen para desplazar). Reutiliza la misma matemática que
+ * estiloRecorte (la vista previa en CSS) para que el recorte final coincida
+ * exactamente con lo que se veía.
  */
 export function recortarConAjuste(
   img: HTMLImageElement,
@@ -92,16 +72,19 @@ export function recortarConAjuste(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No se pudo preparar el lienzo de recorte.');
 
-  const escalaBase = Math.max(anchoDestinoPx / img.width, altoDestinoPx / img.height);
-  const escala = escalaBase * Math.max(1, ajuste.zoom);
-  const anchoRecorte = anchoDestinoPx / escala;
-  const altoRecorte = altoDestinoPx / escala;
-  const maxOrigenX = Math.max(0, img.width - anchoRecorte);
-  const maxOrigenY = Math.max(0, img.height - altoRecorte);
-  const origenX = maxOrigenX * Math.min(1, Math.max(0, ajuste.posX));
-  const origenY = maxOrigenY * Math.min(1, Math.max(0, ajuste.posY));
+  // JPEG no soporta transparencia: con zoom < 1 sobra espacio alrededor de la
+  // imagen (letterbox) que debe rellenarse de blanco, no quedar en negro.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.drawImage(img, origenX, origenY, anchoRecorte, altoRecorte, 0, 0, canvas.width, canvas.height);
+  const celdaAspecto = anchoDestinoPx / altoDestinoPx;
+  const estilo = estiloRecorte(img, celdaAspecto, ajuste);
+  const anchoDibujo = (parseFloat(estilo.width) / 100) * canvas.width;
+  const altoDibujo = (parseFloat(estilo.height) / 100) * canvas.height;
+  const xDibujo = (parseFloat(estilo.left) / 100) * canvas.width;
+  const yDibujo = (parseFloat(estilo.top) / 100) * canvas.height;
+
+  ctx.drawImage(img, 0, 0, img.width, img.height, xDibujo, yDibujo, anchoDibujo, altoDibujo);
   return canvas.toDataURL('image/jpeg', 0.92);
 }
 
@@ -125,7 +108,10 @@ export function estiloRecorte(
     anchoPct = 100;
     altoPct = 100 * (celdaAspecto / imgAspecto);
   }
-  const zoom = Math.max(1, ajuste.zoom);
+  // Piso de seguridad muy bajo (no 1): con zoom < 1 la foto se ve completa y
+  // más chica dentro del marco, con margen alrededor — es la "reducción" que
+  // complementa el acercamiento (zoom > 1).
+  const zoom = Math.max(0.1, ajuste.zoom);
   anchoPct *= zoom;
   altoPct *= zoom;
   const excesoAncho = anchoPct - 100;

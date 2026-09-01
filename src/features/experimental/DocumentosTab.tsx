@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { PLANTILLAS_DOCUMENTO, TAMANOS_HOJA } from './plantillas';
 import { ajustarSinRecortar, cargarImagen } from './imageUtils';
 import { imprimirPaginas } from './imprimir';
+import { CampoNumerico } from '../../shared/components/CampoNumerico';
 
 interface EntradaDocumento {
   id: string;
@@ -229,23 +230,19 @@ export function DocumentosTab() {
           <>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Ancho (cm)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="1"
+              <CampoNumerico
+                min={1}
                 value={anchoPersonalizado}
-                onChange={(e) => setAnchoPersonalizado(Number(e.target.value))}
+                onChange={setAnchoPersonalizado}
                 className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Alto (cm)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="1"
+              <CampoNumerico
+                min={1}
                 value={altoPersonalizado}
-                onChange={(e) => setAltoPersonalizado(Number(e.target.value))}
+                onChange={setAltoPersonalizado}
                 className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
@@ -269,24 +266,20 @@ export function DocumentosTab() {
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Margen (cm)</label>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
+          <CampoNumerico
+            min={0}
             value={margenCm}
-            onChange={(e) => setMargenCm(Number(e.target.value))}
+            onChange={setMargenCm}
             className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           />
         </div>
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Espacio (cm)</label>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
+          <CampoNumerico
+            min={0}
             value={espacioCm}
-            onChange={(e) => setEspacioCm(Number(e.target.value))}
+            onChange={setEspacioCm}
             className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           />
         </div>

@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { PLANTILLAS_FOTO, TAMANOS_HOJA } from './plantillas';
+import { CampoNumerico } from '../../shared/components/CampoNumerico';
+
+const CLASE_INPUT =
+  'w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100';
 
 const PRESETS = [
   ...PLANTILLAS_FOTO.filter((p) => p.id !== 'personalizado').map((p) => ({
@@ -92,99 +96,58 @@ export function CalculadoraTintaTab() {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Ancho (cm)</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
+            <CampoNumerico
+              min={0.1}
               value={anchoCm}
-              onChange={(e) => {
+              onChange={(valor) => {
                 setPresetId('personalizado');
-                setAnchoCm(Number(e.target.value));
+                setAnchoCm(valor);
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              className={CLASE_INPUT}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Alto (cm)</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
+            <CampoNumerico
+              min={0.1}
               value={altoCm}
-              onChange={(e) => {
+              onChange={(valor) => {
                 setPresetId('personalizado');
-                setAltoCm(Number(e.target.value));
+                setAltoCm(valor);
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              className={CLASE_INPUT}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Copias</label>
-            <input
-              type="number"
-              step="1"
-              min="1"
-              value={cantidadCopias}
-              onChange={(e) => setCantidadCopias(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            />
+            <CampoNumerico min={1} value={cantidadCopias} onChange={setCantidadCopias} className={CLASE_INPUT} />
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Cobertura de tinta (%)</label>
-            <input
-              type="number"
-              step="1"
-              min="0"
-              max="100"
+            <CampoNumerico
+              min={0}
+              max={100}
               value={coberturaPorcentaje}
-              onChange={(e) => setCoberturaPorcentaje(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              onChange={setCoberturaPorcentaje}
+              className={CLASE_INPUT}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Consumo (ml/cm² al 100%)</label>
-            <input
-              type="number"
-              step="0.001"
-              min="0"
-              value={mlPorCm2}
-              onChange={(e) => setMlPorCm2(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            />
+            <CampoNumerico min={0} value={mlPorCm2} onChange={setMlPorCm2} className={CLASE_INPUT} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Costo tinta ($/ml)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={costoTintaPorMl}
-              onChange={(e) => setCostoTintaPorMl(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            />
+            <CampoNumerico min={0} value={costoTintaPorMl} onChange={setCostoTintaPorMl} className={CLASE_INPUT} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Costo papel ($/hoja)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={costoPapelPorHoja}
-              onChange={(e) => setCostoPapelPorHoja(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            />
+            <CampoNumerico min={0} value={costoPapelPorHoja} onChange={setCostoPapelPorHoja} className={CLASE_INPUT} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Margen de ganancia (%)</label>
-            <input
-              type="number"
-              step="1"
-              min="0"
-              value={margenPorcentaje}
-              onChange={(e) => setMargenPorcentaje(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            />
+            <CampoNumerico min={0} value={margenPorcentaje} onChange={setMargenPorcentaje} className={CLASE_INPUT} />
           </div>
         </div>
       </div>

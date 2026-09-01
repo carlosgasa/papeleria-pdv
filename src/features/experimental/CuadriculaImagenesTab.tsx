@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { TAMANOS_HOJA } from './plantillas';
 import {
   AJUSTE_RECORTE_DEFECTO,
@@ -15,6 +15,7 @@ import {
 } from './imageUtils';
 import { imprimirPaginas } from './imprimir';
 import { AjustarRecorteModal } from './AjustarRecorteModal';
+import { CampoNumerico } from '../../shared/components/CampoNumerico';
 
 interface EntradaImagen {
   id: string;
@@ -336,23 +337,21 @@ export function CuadriculaImagenesTab() {
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Columnas</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
+            <CampoNumerico
+              min={1}
+              max={10}
               value={columnas}
-              onChange={(e) => setColumnas(Math.max(1, Math.min(10, Number(e.target.value))))}
+              onChange={setColumnas}
               className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Filas</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
+            <CampoNumerico
+              min={1}
+              max={10}
               value={filas}
-              onChange={(e) => setFilas(Math.max(1, Math.min(10, Number(e.target.value))))}
+              onChange={setFilas}
               className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
@@ -399,12 +398,10 @@ export function CuadriculaImagenesTab() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Espacio (cm)</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
+            <CampoNumerico
+              min={0}
               value={espacioCm}
-              onChange={(e) => setEspacioCm(Number(e.target.value))}
+              onChange={setEspacioCm}
               className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>

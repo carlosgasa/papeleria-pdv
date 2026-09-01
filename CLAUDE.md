@@ -8,7 +8,7 @@ App de punto de venta para una papelería pequeña, uso interno de un solo negoc
 - **React Router v7** (`BrowserRouter`), rutas protegidas con `ProtectedRoute`
 - **Firebase**: Auth, Firestore (con persistencia offline), Storage (imágenes de producto)
 - **PWA** vía `vite-plugin-pwa` (instalable, funciona offline)
-- `date-fns` (locale `es`), `recharts` (gráficas del dashboard), `@zxing/browser` (escáner de código de barras por cámara), `html2canvas` + `jspdf` (tickets/reportes como imagen o PDF)
+- `date-fns` (locale `es`), `recharts` (gráficas del dashboard), `@zxing/browser` (escáner de código de barras por cámara), `html2canvas-pro` (fork de html2canvas con soporte para `oklch`/`oklab`, que Tailwind v4 usa por defecto en su paleta) + `jspdf` (tickets/reportes como imagen o PDF)
 - Linter: `oxlint`. Sin test runner configurado.
 
 Scripts: `npm run dev`, `npm run build` (`tsc -b && vite build`), `npm run lint`, `npm run preview`.

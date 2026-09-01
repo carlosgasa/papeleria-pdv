@@ -15,7 +15,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "firebase": "^12.17.1",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.4.0",
     "jspdf": "^4.2.1",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

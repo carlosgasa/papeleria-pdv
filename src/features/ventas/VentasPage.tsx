@@ -18,6 +18,7 @@ import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
 import { useBorradores, type BorradorBase } from '../../shared/hooks/useBorradores';
 import { GuardarNotaModal } from '../../shared/components/GuardarNotaModal';
 import { NotasGuardadasModal } from '../../shared/components/NotasGuardadasModal';
+import { CampoNumerico } from '../../shared/components/CampoNumerico';
 
 type Pestana = 'vender' | 'historial';
 
@@ -71,18 +72,11 @@ function ContenidoCarrito({
                   >
                     −
                   </button>
-                  <input
-                    type="number"
-                    min="1"
+                  <CampoNumerico
+                    min={1}
+                    max={stockDisponible}
                     value={item.cantidad}
-                    onChange={(e) => {
-                      const valor = Math.floor(Number(e.target.value));
-                      carrito.cambiarCantidad(
-                        item.productoId,
-                        Number.isFinite(valor) && valor > 0 ? valor : 1,
-                        stockDisponible,
-                      );
-                    }}
+                    onChange={(valor) => carrito.cambiarCantidad(item.productoId, valor, stockDisponible)}
                     className="w-10 rounded border border-gray-300 bg-white text-center text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                   <button

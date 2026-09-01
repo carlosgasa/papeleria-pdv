@@ -10,7 +10,7 @@ interface AjustarRecorteModalProps {
   onCerrar: () => void;
 }
 
-const ZOOM_MIN = 1;
+const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 4;
 
 export function AjustarRecorteModal({
@@ -85,7 +85,10 @@ export function AjustarRecorteModal({
           </button>
         </div>
 
-        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">Arrastra la foto para moverla dentro del marco.</p>
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          Arrastra la foto para moverla dentro del marco. Con el zoom en menos de 1× se ve completa y más chica,
+          con margen blanco alrededor.
+        </p>
 
         <div
           ref={contenedorRef}
@@ -93,8 +96,8 @@ export function AjustarRecorteModal({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="relative mx-auto touch-none select-none overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800"
-          style={{ width: '100%', aspectRatio: `${celdaAspecto}` }}
+          className="relative mx-auto touch-none select-none overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+          style={{ width: '100%', aspectRatio: `${celdaAspecto}`, backgroundColor: '#ffffff' }}
         >
           <img
             src={previewUrl}

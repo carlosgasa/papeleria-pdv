@@ -8,6 +8,7 @@ import { emojiDeCategoria } from '../../shared/utils/categoriaEmoji';
 import { useBorradores, type BorradorBase } from '../../shared/hooks/useBorradores';
 import { GuardarNotaModal } from '../../shared/components/GuardarNotaModal';
 import { NotasGuardadasModal } from '../../shared/components/NotasGuardadasModal';
+import { CampoNumerico } from '../../shared/components/CampoNumerico';
 
 interface ItemPresupuesto {
   id: string;
@@ -264,19 +265,16 @@ export function PresupuestoTab() {
                 <span className="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-300">
                   {item.nombre}
                 </span>
-                <input
-                  type="number"
-                  min="1"
+                <CampoNumerico
+                  min={1}
                   value={item.cantidad}
-                  onChange={(e) => actualizarItem(item.id, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
+                  onChange={(valor) => actualizarItem(item.id, { cantidad: valor })}
                   className="w-14 shrink-0 rounded-lg border border-gray-300 bg-white px-1 py-1.5 text-center text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                <CampoNumerico
+                  min={0}
                   value={item.precioUnitario}
-                  onChange={(e) => actualizarItem(item.id, { precioUnitario: Math.max(0, Number(e.target.value) || 0) })}
+                  onChange={(valor) => actualizarItem(item.id, { precioUnitario: valor })}
                   className="w-20 shrink-0 rounded-lg border border-gray-300 bg-white px-1 py-1.5 text-right text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 />
                 <button onClick={() => quitarItem(item.id)} className="shrink-0 text-gray-400 hover:text-red-500" aria-label="Quitar">
