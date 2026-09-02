@@ -57,7 +57,7 @@ export function TicketVentaModal({ detalle, onCerrar }: TicketVentaModalProps) {
 
         <pre
           ref={ticketRef}
-          className="whitespace-pre-wrap rounded-xl border border-dashed border-gray-300 bg-white p-3 font-mono text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          className="whitespace-pre-wrap break-words rounded-xl border border-dashed border-gray-300 bg-white p-3 font-mono text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
         >
           {generarTextoTicket(detalle)}
         </pre>

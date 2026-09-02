@@ -26,7 +26,16 @@ export async function compartirImagenDeElemento(
   nombreArchivo: string,
   titulo?: string,
 ): Promise<ResultadoCompartir> {
-  const canvas = await html2canvas(elemento, { scale: 2, backgroundColor: '#ffffff' });
+  // Se fuerzan width/height al tamaño real ya renderizado del elemento: html2canvas a veces
+  // mide mal el ancho de un <pre> con texto largo envuelto (whitespace-pre-wrap) y produce un
+  // canvas mucho más ancho de lo que se ve en pantalla, sobre todo con tickets de muchos items.
+  const canvas = await html2canvas(elemento, {
+    scale: 2,
+    backgroundColor: '#ffffff',
+    width: elemento.clientWidth,
+    height: elemento.scrollHeight,
+    windowWidth: elemento.clientWidth,
+  });
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) return 'error';
 
