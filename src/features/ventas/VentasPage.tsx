@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Producto } from '../../domain/entities/Producto';
 import type { ItemVenta } from '../../domain/entities/Venta';
-import { calcularSubtotal } from '../../domain/entities/Venta';
+import { calcularGananciaDeItems, calcularSubtotal } from '../../domain/entities/Venta';
 import { useAuth } from '../../application/auth/useAuth';
 import { useProductos } from '../../application/inventario/useProductos';
 import { useClientes } from '../../application/clientes/useClientes';
@@ -281,6 +281,7 @@ export function VentasPage() {
         montoRecibido: datos.montoRecibido,
         cambio,
         clienteNombre,
+        ganancia: calcularGananciaDeItems(items, datos.descuento),
       });
 
       carrito.limpiar();

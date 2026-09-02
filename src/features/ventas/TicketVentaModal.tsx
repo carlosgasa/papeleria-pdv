@@ -62,6 +62,10 @@ export function TicketVentaModal({ detalle, onCerrar }: TicketVentaModalProps) {
           {generarTextoTicket(detalle)}
         </pre>
 
+        <p className="mt-1 text-right text-[10px] text-gray-400 dark:text-gray-600">
+          Ganancia: ${detalle.ganancia.toFixed(2)}
+        </p>
+
         {mensaje && (
           <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
             {mensaje}

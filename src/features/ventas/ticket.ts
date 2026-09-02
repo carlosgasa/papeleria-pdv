@@ -14,6 +14,8 @@ export interface DetalleTicket {
   montoRecibido: number | null;
   cambio: number | null;
   clienteNombre: string | null;
+  /** Solo para mostrar en pantalla dentro de la app; nunca se incluye en el texto/imagen/PDF compartido. */
+  ganancia: number;
 }
 
 const ETIQUETA_METODO: Record<MetodoPago, string> = {

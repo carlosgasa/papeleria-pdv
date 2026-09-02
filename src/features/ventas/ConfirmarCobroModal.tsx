@@ -200,6 +200,13 @@ export function ConfirmarCobroModal({
             />
 
             <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setMontoRecibido(String(totalFinal))}
+                className="rounded-full border border-brand-500 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-950 dark:text-brand-300 dark:hover:bg-brand-900"
+              >
+                ${totalFinal.toFixed(2)} exacto
+              </button>
               {BILLETES_RAPIDOS.map((billete) => (
                 <button
                   key={billete}
@@ -210,13 +217,6 @@ export function ConfirmarCobroModal({
                   ${billete}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setMontoRecibido(String(totalFinal))}
-                className="rounded-full border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              >
-                Exacto
-              </button>
             </div>
 
             {cambio !== null && (

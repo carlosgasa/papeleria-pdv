@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { calcularGanancia } from '../../domain/entities/Venta';
 import { useVentas } from '../../application/ventas/useVentas';
+import { useClientes } from '../../application/clientes/useClientes';
 import { container } from '../../infrastructure/container';
 
 const ETIQUETA_METODO: Record<string, string> = {
@@ -13,7 +15,10 @@ const ETIQUETA_METODO: Record<string, string> = {
 
 export function HistorialVentas() {
   const { ventas, cargando } = useVentas();
+  const { clientes } = useClientes();
   const [anulandoId, setAnulandoId] = useState<string | null>(null);
+
+  const clientesPorId = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes]);
 
   async function handleAnular(ventaId: string) {
     if (!confirm('¿Anular esta venta? El stock de los productos se restituirá.')) return;
@@ -59,6 +64,14 @@ export function HistorialVentas() {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {format(venta.fecha, "d 'de' MMM, HH:mm", { locale: es })} · {ETIQUETA_METODO[venta.metodoPago]}
                 {venta.descuento > 0 && ` · descuento $${venta.descuento.toFixed(2)}`}
+              </p>
+              {venta.clienteId && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Cliente: {clientesPorId.get(venta.clienteId)?.nombre ?? '(eliminado)'}
+                </p>
+              )}
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                Ganancia: ${calcularGanancia(venta).toFixed(2)}
               </p>
             </div>
             {!venta.anulada && (

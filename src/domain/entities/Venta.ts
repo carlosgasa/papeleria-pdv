@@ -30,10 +30,14 @@ export function calcularSubtotal(items: ItemVenta[]): number {
   return items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0);
 }
 
-export function calcularGanancia(venta: Venta): number {
-  const gananciaBruta = venta.items.reduce(
+export function calcularGananciaDeItems(items: ItemVenta[], descuento: number): number {
+  const gananciaBruta = items.reduce(
     (acc, item) => acc + item.cantidad * (item.precioUnitario - item.costoUnitario),
     0,
   );
-  return gananciaBruta - venta.descuento;
+  return gananciaBruta - descuento;
+}
+
+export function calcularGanancia(venta: Venta): number {
+  return calcularGananciaDeItems(venta.items, venta.descuento);
 }
