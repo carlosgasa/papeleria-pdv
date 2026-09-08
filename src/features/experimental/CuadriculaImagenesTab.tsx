@@ -184,12 +184,17 @@ export function CuadriculaImagenesTab() {
     setError(null);
     try {
       const { celdaAncho, celdaAlto, alturaTitulo } = calcularCeldas();
-      const pdf = new jsPDF({ unit: 'cm', format: [hoja.anchoCm, hoja.altoCm] });
+      // jsPDF asume orientación "portrait" por defecto y, si no se le indica lo
+      // contrario, voltea de vuelta a vertical cualquier `format` [ancho, alto]
+      // donde ancho > alto — hay que pasarle `orientation` explícito o la hoja
+      // "horizontal" termina exportándose vertical con el contenido recortado.
+      const orientationPdf = orientacionHoja === 'horizontal' ? 'l' : 'p';
+      const pdf = new jsPDF({ unit: 'cm', format: [hoja.anchoCm, hoja.altoCm], orientation: orientationPdf });
       const anchoPx = Math.round((celdaAncho / CM_A_PULGADA) * DPI_EXPORTACION);
       const altoPx = Math.round((celdaAlto / CM_A_PULGADA) * DPI_EXPORTACION);
 
       paginas.forEach((pagina, indicePagina) => {
-        if (indicePagina > 0) pdf.addPage([hoja.anchoCm, hoja.altoCm]);
+        if (indicePagina > 0) pdf.addPage([hoja.anchoCm, hoja.altoCm], orientationPdf);
 
         if (titulo.trim()) {
           pdf.setFontSize(14);
@@ -461,9 +466,9 @@ export function CuadriculaImagenesTab() {
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="flex flex-wrap gap-4">
         {paginas.map((pagina, indicePagina) => (
-          <div key={indicePagina} className="space-y-2">
+          <div key={indicePagina} className="w-full space-y-2 sm:w-64">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Hoja {indicePagina + 1} de {paginas.length}
             </p>
@@ -474,7 +479,6 @@ export function CuadriculaImagenesTab() {
               className="mx-auto flex flex-col shadow-sm"
               style={{
                 width: '100%',
-                maxWidth: 360,
                 aspectRatio: `${hoja.anchoCm} / ${hoja.altoCm}`,
                 padding: `${(margenCm / hoja.anchoCm) * 100}% ${(margenCm / hoja.anchoCm) * 100}%`,
                 boxSizing: 'border-box',
@@ -513,6 +517,7 @@ export function CuadriculaImagenesTab() {
                       />
                       <button
                         onClick={() => void rotarEntrada(entrada.id)}
+                        data-html2canvas-ignore="true"
                         className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
                         aria-label="Girar"
                         title="Girar 90°"
@@ -521,6 +526,7 @@ export function CuadriculaImagenesTab() {
                       </button>
                       <button
                         onClick={() => setEntradaEditandoId(entrada.id)}
+                        data-html2canvas-ignore="true"
                         className="absolute bottom-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
                         aria-label="Ajustar recorte"
                         title="Ajustar recorte"
@@ -541,6 +547,7 @@ export function CuadriculaImagenesTab() {
                       />
                       <button
                         onClick={() => void rotarEntrada(entrada.id)}
+                        data-html2canvas-ignore="true"
                         className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] text-white opacity-70 transition hover:opacity-100 sm:h-6 sm:w-6 sm:text-xs"
                         aria-label="Girar"
                         title="Girar 90°"
